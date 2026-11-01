@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasks – a simple to-do app</title>
+  <meta name="description" content="A lightweight to-do app built with vanilla HTML, CSS and JavaScript.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="head">
+      <h1>Tasks</h1>
+      <p class="date" id="today"></p>
+    </header>
+
+    <form class="add" id="add-form" autocomplete="off">
+      <label class="sr-only" for="new-task">New task</label>
+      <input id="new-task" type="text" placeholder="What needs doing?" maxlength="120" required>
+      <label class="sr-only" for="priority">Priority</label>
+      <select id="priority">
+        <option value="low">Low</option>
+        <option value="med" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <button type="submit">Add task</button>
+    </form>
+
+    <p class="error" id="error" role="alert" hidden></p>
+
+    <nav class="filters" aria-label="Filter tasks">
+      <button data-filter="all" class="on" aria-pressed="true">All</button>
+      <button data-filter="active" aria-pressed="false">Active</button>
+      <button data-filter="done" aria-pressed="false">Done</button>
+    </nav>
+
+    <ul class="list" id="list" aria-live="polite"></ul>
+
+    <p class="empty" id="empty" hidden></p>
+
+    <footer class="foot">
+      <span id="count">0 tasks left</span>
+      <button class="link" id="clear" type="button">Clear completed</button>
+    </footer>
+    <p class="hint">Double-click a task (or press F2) to edit. Esc cancels.</p>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
