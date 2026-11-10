@@ -7,11 +7,12 @@ No build step, no frameworks: open `index.html` and it works.
 
 ## Features
 - Add, complete, edit (double-click or F2) and delete tasks
-- Priority levels (low / medium / high) shown as a colour marker
+- Priority levels (low / medium / high) shown as labelled pills: red, yellow and outlined grey
 - Filter by All / Active / Done, live "tasks left" counter, Clear completed
-- Data persists in `localStorage` (with safe fallback if storage is blocked or corrupted)
+- Data persists in `localStorage`. Stored data is validated on load, with a safe fallback if storage is blocked or corrupted
 - Input validation with an inline error message
-- Responsive layout, automatic dark mode, keyboard accessible, ARIA labels, reduced-motion support
+- Same red + yellow palette as the React version, with automatic dark mode
+- Responsive layout, keyboard accessible (focus stays on the task you just changed), ARIA labels, reduced-motion support
 
 ## Project structure
 ```
@@ -34,7 +35,8 @@ python -m http.server 8000
 - **Security:** tasks are rendered with `textContent` and DOM APIs, never `innerHTML`, so user input can't inject HTML/scripts.
 - **Single source of truth:** one `tasks` array; every change goes through `commit()` which saves then re-renders.
 - **Resilience:** `JSON.parse` and `localStorage` access are wrapped in `try/catch`.
-- **Accessibility:** real `<label>`s, `aria-live` list, `aria-pressed` filters, visible focus styles.
+- **Accessibility:** real `<label>`s, one status region for announcements, `aria-pressed` filters, visible focus styles, and priority never shown by colour alone.
+- **Tested:** `react/src/vanilla.test.ts` loads this folder's real HTML and script into jsdom (run `npm test` in `/react`).
 
 ## Debugging task
 A broken snippet and its fix, to show the debugging approach.
@@ -66,7 +68,7 @@ todos.forEach((todo) => {
 3. **Micro-interactions and a contact form:** subtle scroll reveals and validated form feedback instead of a bare `mailto:` link.
 
 ## Possible next steps
-Drag-and-drop reordering, due dates, search, export/import JSON, unit tests with Vitest.
+Drag-and-drop reordering, due dates, search and export/import JSON. All of these exist in the React version.
 
 ## License
 MIT
