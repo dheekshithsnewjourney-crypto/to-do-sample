@@ -1,19 +1,78 @@
-import type { List, Priority, Task } from './types';
+import { parseHex } from './color';
+import { isISODate } from './dates';
+import type { List, Subtask, Task } from './types';
 
 const TASKS_KEY = 'todo-app:v1';
 const LISTS_KEY = 'todo-lists:v1';
+const DEFAULT_COLOR = '#D62839';
 
 export const DEFAULT_LISTS: List[] = [
-  { id: 'personal', name: 'Personal', color: '#5b5bd6' },
-  { id: 'work', name: 'Work', color: '#e5a000' },
+  { id: 'personal', name: 'Personal', color: DEFAULT_COLOR },
+  { id: 'work', name: 'Work', color: '#FFC53D' },
 ];
 
-function read<T>(key: string, fallback: T): T {
+type Raw = Record<string, unknown>;
+const isObject = (v: unknown): v is Raw => typeof v === 'object' && v !== null && !Array.isArray(v);
+const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+const oneOf = <T extends string>(v: unknown, allowed: readonly T[]): T | undefined =>
+  allowed.includes(v as T) ? (v as T) : undefined;
+
+// Drops entries with a missing or repeated id (duplicates would break React keys and toggling).
+function uniqueById<T extends { id: string }>(items: (T | null)[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item): item is T => !!item && !seen.has(item.id) && !!seen.add(item.id));
+}
+
+function sanitizeSubtask(raw: unknown): Subtask | null {
+  if (!isObject(raw) || !text(raw.id) || !text(raw.text)) return null;
+  return { id: raw.id as string, text: text(raw.text), done: raw.done === true };
+}
+
+// Rebuilds a task from known fields only. Stored and imported data is never trusted as-is:
+// a wrong type in any field used to be enough to crash rendering.
+export function sanitizeTask(raw: unknown, listIds?: Set<string>): Task | null {
+  if (!isObject(raw) || !text(raw.id) || !text(raw.text)) return null;
+  const task: Task = {
+    id: raw.id as string,
+    text: text(raw.text),
+    priority: oneOf(raw.priority, ['low', 'med', 'high'] as const) ?? 'med',
+    done: raw.done === true,
+  };
+  if (isISODate(raw.dueDate)) task.dueDate = raw.dueDate;
+  if (typeof raw.notes === 'string' && raw.notes) task.notes = raw.notes;
+  if (typeof raw.listId === 'string' && (!listIds || listIds.has(raw.listId))) task.listId = raw.listId;
+  if (Array.isArray(raw.subtasks)) {
+    const subtasks = uniqueById(raw.subtasks.map(sanitizeSubtask));
+    if (subtasks.length) task.subtasks = subtasks;
+  }
+  const repeat = oneOf(raw.repeat, ['daily', 'weekly', 'monthly'] as const);
+  if (repeat && task.dueDate) {
+    task.repeat = repeat;
+    const day = raw.repeatDay;
+    if (repeat === 'monthly' && typeof day === 'number' && Number.isInteger(day) && day >= 1 && day <= 31) task.repeatDay = day;
+  }
+  if (task.done && typeof raw.spawnedId === 'string') task.spawnedId = raw.spawnedId;
+  return task;
+}
+
+export function sanitizeTasks(raw: unknown, listIds?: Set<string>): Task[] {
+  return Array.isArray(raw) ? uniqueById(raw.map((t) => sanitizeTask(t, listIds))) : [];
+}
+
+export function sanitizeLists(raw: unknown): List[] {
+  if (!Array.isArray(raw)) return [];
+  return uniqueById(raw.map((l) => (
+    isObject(l) && text(l.id) && text(l.name)
+      ? { id: l.id as string, name: text(l.name), color: parseHex(l.color) ? (l.color as string) : DEFAULT_COLOR }
+      : null
+  )));
+}
+
+function read(key: string): unknown {
   try {
-    const data = JSON.parse(localStorage.getItem(key) ?? 'null');
-    return Array.isArray(data) ? (data as T) : fallback;
+    return JSON.parse(localStorage.getItem(key) ?? 'null');
   } catch {
-    return fallback; // corrupted or blocked storage
+    return null; // corrupted or blocked storage
   }
 }
 
@@ -25,28 +84,30 @@ function write(key: string, value: unknown): void {
   }
 }
 
-export const loadTasks = (): Task[] => read<Task[]>(TASKS_KEY, []);
+// Passing the lists also unassigns tasks that point at a list which no longer exists.
+export const loadTasks = (lists?: List[]): Task[] =>
+  sanitizeTasks(read(TASKS_KEY), lists && new Set(lists.map((l) => l.id)));
 export const saveTasks = (tasks: Task[]): void => write(TASKS_KEY, tasks);
-export const loadLists = (): List[] => read<List[]>(LISTS_KEY, DEFAULT_LISTS);
+export function loadLists(): List[] {
+  const raw = read(LISTS_KEY);
+  return Array.isArray(raw) ? sanitizeLists(raw) : DEFAULT_LISTS; // an empty array is a valid choice
+}
 export const saveLists = (lists: List[]): void => write(LISTS_KEY, lists);
 
 // Validates and cleans an imported backup file. Returns null if it is not usable.
-export function parseBackup(text: string): { tasks: Task[]; lists: List[] } | null {
+// A task without a usable id or title rejects the whole file: silently dropping tasks from a
+// backup that is about to replace everything would be worse than refusing it.
+export function parseBackup(json: string): { tasks: Task[]; lists: List[] } | null {
+  let data: unknown;
   try {
-    const data = JSON.parse(text);
-    if (!data || !Array.isArray(data.tasks)) return null;
-    if (!data.tasks.every((t: any) => t && typeof t.id === 'string' && typeof t.text === 'string')) return null;
-
-    const tasks: Task[] = data.tasks.map((t: any) => ({
-      ...t,
-      priority: (['low', 'med', 'high'].includes(t.priority) ? t.priority : 'med') as Priority,
-      done: Boolean(t.done),
-    }));
-    const lists: List[] = (Array.isArray(data.lists) ? data.lists : [])
-      .filter((l: any) => l && typeof l.id === 'string' && typeof l.name === 'string')
-      .map((l: any) => ({ id: l.id, name: l.name, color: typeof l.color === 'string' ? l.color : '#5b5bd6' }));
-    return { tasks, lists };
+    data = JSON.parse(json);
   } catch {
     return null;
   }
+  if (!isObject(data) || !Array.isArray(data.tasks)) return null;
+  const lists = 'lists' in data ? sanitizeLists(data.lists) : DEFAULT_LISTS;
+  const listIds = new Set(lists.map((l) => l.id));
+  const tasks = data.tasks.map((t) => sanitizeTask(t, listIds));
+  if (tasks.some((t) => !t)) return null;
+  return { tasks: uniqueById(tasks), lists };
 }

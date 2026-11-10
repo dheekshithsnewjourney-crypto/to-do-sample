@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import Drawer from './components/Drawer';
+import EmptyState, { type EmptyKind } from './components/EmptyState';
 import Filters from './components/Filters';
 import Palette from './components/Palette';
 import ProgressRing from './components/ProgressRing';
@@ -7,55 +8,57 @@ import Sidebar from './components/Sidebar';
 import TaskForm from './components/TaskForm';
 import TaskItem from './components/TaskItem';
 import Toast from './components/Toast';
-import { greeting, todayISO } from './dates';
+import { MenuIcon, MoonIcon, SunIcon } from './components/icons';
+import { accentVars, parseHex } from './color';
+import { parseISO } from './dates';
+import { isDialogOpen, useClock } from './hooks';
 import { tasksReducer } from './reducer';
-import { DEFAULT_LISTS, loadLists, loadTasks, parseBackup, saveLists, saveTasks } from './storage';
+import { loadLists, loadTasks, parseBackup, saveLists, saveTasks } from './storage';
 import type { Filter, List, Sort, Task, View } from './types';
+import { uid } from './uid';
+import { dueForNewTask, inView } from './views';
 
 type Theme = 'light' | 'dark';
+interface Undo { id: string; message: string; items: { task: Task; index: number }[] }
+
 const THEME_KEY = 'todo-theme';
 const ACCENT_KEY = 'todo-accent';
 const RANK = { high: 0, med: 1, low: 2 } as const;
-const PALETTE = ['#5b5bd6', '#e5a000', '#2f9e6e', '#e5484d', '#0ea5e9', '#c026d3'];
+const LIST_COLORS = ['#D62839', '#FFC53D', '#8A8A8A'];
 const VIEW_TITLES: Record<string, string> = { all: 'All tasks', today: 'Today', upcoming: 'Upcoming', overdue: 'Overdue' };
-
-const EMPTY: Record<Filter, string> = {
-  all: 'Nothing here yet. Add your first task above.',
-  active: 'All caught up. No active tasks.',
-  done: 'Nothing completed yet.',
-};
-
-function inView(t: Task, view: View, today: string): boolean {
-  if (view === 'all') return true;
-  if (view === 'today') return !!t.dueDate && (t.dueDate === today || (!t.done && t.dueDate < today));
-  if (view === 'upcoming') return !!t.dueDate && t.dueDate > today;
-  if (view === 'overdue') return !t.done && !!t.dueDate && t.dueDate < today;
-  return t.listId === view.slice(5);
-}
+const MOD_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 function initialTheme(): Theme {
   try {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved === 'light' || saved === 'dark') return saved;
   } catch { /* storage blocked */ }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export default function App() {
-  const [tasks, dispatch] = useReducer(tasksReducer, undefined, loadTasks);
   const [lists, setLists] = useState<List[]>(loadLists);
+  const [tasks, dispatch] = useReducer(tasksReducer, lists, loadTasks);
   const [view, setView] = useState<View>('all');
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('manual');
   const [query, setQuery] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [undo, setUndo] = useState<{ task: Task; index: number } | null>(null);
+  const [undo, setUndo] = useState<Undo | null>(null);
   const [palette, setPalette] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [status, setStatus] = useState(''); // read out by screen readers
   const [accent, setAccent] = useState<string | null>(() => {
-    try { return localStorage.getItem(ACCENT_KEY); } catch { return null; }
+    try {
+      const saved = localStorage.getItem(ACCENT_KEY);
+      return parseHex(saved) ? saved : null; // never trust stored strings as CSS
+    } catch { return null; }
   });
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const focusAfterMove = useRef<string | null>(null);
+  const { today, hello } = useClock(); // stays correct when the tab is left open past midnight
 
   useEffect(() => saveTasks(tasks), [tasks]);
   useEffect(() => saveLists(lists), [lists]);
@@ -66,36 +69,31 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    // A custom accent gets its ink from its own luminance, and a text-safe variant for this theme.
     const root = document.documentElement;
-    if (accent) {
-      root.style.setProperty('--accent', accent);
-      root.style.setProperty('--accent-ink', '#ffffff');
-    } else {
-      root.style.removeProperty('--accent');
-      root.style.removeProperty('--accent-ink');
-    }
+    ['--accent', '--accent-ink', '--accent-text'].forEach((name) => root.style.removeProperty(name));
+    const css = getComputedStyle(root);
+    const surfaces = [css.getPropertyValue('--bg'), css.getPropertyValue('--surface')];
+    const vars = accent ? accentVars(accent, surfaces, theme === 'dark') : null;
+    if (vars) Object.entries(vars).forEach(([name, value]) => root.style.setProperty(name, value));
     try {
       if (accent) localStorage.setItem(ACCENT_KEY, accent);
       else localStorage.removeItem(ACCENT_KEY);
     } catch { /* ignore */ }
-  }, [accent]);
+  }, [accent, theme]);
 
-  useEffect(() => {
-    if (!undo) return;
-    const timer = setTimeout(() => setUndo(null), 5000);
-    return () => clearTimeout(timer);
-  }, [undo]);
-
-  // Keyboard shortcuts: "/" search, "n" new task
+  // Global shortcuts: Ctrl/Cmd+K palette, "/" search, "n" new task
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setPalette(true);
+        setPalette((open) => !open);
         return;
       }
-      const tag = (e.target as HTMLElement).tagName;
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement;
+      const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) || el.isContentEditable;
+      // Single-key shortcuts must not reach behind an open dialog
+      if (typing || isDialogOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); }
       if (e.key === 'n') { e.preventDefault(); document.getElementById('new-task')?.focus(); }
     };
@@ -103,7 +101,23 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const today = todayISO();
+  // The off-canvas menu only exists on narrow screens: close it if the window grows.
+  useEffect(() => {
+    const wide = window.matchMedia?.('(min-width: 821px)');
+    const onChange = () => { if (wide?.matches) setMenu(false); };
+    wide?.addEventListener('change', onChange);
+    return () => wide?.removeEventListener('change', onChange);
+  }, []);
+
+  // After a keyboard reorder the moved row is re-inserted in the DOM, which drops focus: restore it.
+  useEffect(() => {
+    const id = focusAfterMove.current;
+    if (!id) return;
+    focusAfterMove.current = null;
+    const row = [...(listRef.current?.children ?? [])].find((li) => (li as HTMLElement).dataset.id === id);
+    row?.querySelector<HTMLElement>('.text')?.focus();
+  }, [tasks]);
+
   const scoped = useMemo(() => tasks.filter((t) => inView(t, view, today)), [tasks, view, today]);
 
   const counts: Record<Filter, number> = {
@@ -133,41 +147,72 @@ export default function App() {
   const overdue = viewCounts.overdue;
   const allActive = viewCounts.all;
   const totalDone = tasks.filter((t) => t.done).length;
-  const sub =
-    tasks.length === 0 ? 'Add a task to get started.'
-    : allActive === 0 ? 'Everything is done. Nice work.'
-    : `${allActive} to do${overdue ? `, ${overdue} overdue` : ''}`;
 
   const currentListId = view.startsWith('list:') ? view.slice(5) : undefined;
   const viewTitle = VIEW_TITLES[view] ?? lists.find((l) => l.id === currentListId)?.name ?? 'List';
+  // Which empty state fits: a search miss, a filter that hides everything, or a truly empty view.
+  const emptyKind: EmptyKind =
+    query.trim() ? 'search'
+    : scoped.length > 0 ? (filter === 'done' ? 'noneDone' : 'allDone')
+    : currentListId ? 'list'
+    : (view as EmptyKind);
   const canDrag = sort === 'manual' && !query.trim();
   const openTask = tasks.find((t) => t.id === openId);
 
-  function handleAdd(text: string, priority: Task['priority'], dueDate?: string) {
-    dispatch({ type: 'add', id: crypto.randomUUID(), text, priority, dueDate, listId: currentListId });
-    setQuery('');                      // so the new task is never hidden by a leftover search
+  function handleAdd(text: string, priority: Task['priority'], explicitDue?: string) {
+    const task: Task = { id: uid(), text, priority, done: false, dueDate: dueForNewTask(view, today, explicitDue), listId: currentListId };
+    dispatch({ type: 'add', ...task });
+    if (!inView(task, view, today)) setView('all'); // e.g. an undated task added from Overdue
+    setQuery('');                                   // so the new task is never hidden by a leftover search
     if (filter === 'done') setFilter('all');
+    setStatus(`Added "${text}"`);
+  }
+
+  function handleToggle(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    dispatch({ type: 'toggle', id, nextId: uid(), today });
+    setStatus(`"${task.text}" ${task.done ? 'marked as not done' : 'completed'}`);
+  }
+
+  function removeWithUndo(items: Undo['items'], message: string) {
+    if (!items.length) return;
+    setUndo({ id: uid(), message, items }); // the toast is itself a status region, so it is announced once
   }
 
   function handleDelete(id: string) {
     const index = tasks.findIndex((t) => t.id === id);
     if (index === -1) return;
-    setUndo({ task: tasks[index], index });
+    removeWithUndo([{ task: tasks[index], index }], 'Task deleted');
     if (openId === id) setOpenId(null);
     dispatch({ type: 'delete', id });
   }
 
+  function clearCompleted() {
+    const items = tasks.map((task, index) => ({ task, index })).filter((x) => x.task.done);
+    removeWithUndo(items, `${items.length} completed ${items.length === 1 ? 'task' : 'tasks'} cleared`);
+    dispatch({ type: 'clearDone' });
+  }
+
   function handleUndo() {
     if (!undo) return;
-    dispatch({ type: 'restore', task: undo.task, index: undo.index });
+    // Restoring in ascending index order puts every task back in its old slot.
+    undo.items.forEach(({ task, index }) => dispatch({ type: 'restore', task, index }));
     setUndo(null);
+    setStatus('Restored');
   }
 
   function nudge(id: string, dir: -1 | 1) {
-    if (!canDrag) return;
+    if (!canDrag) {
+      setStatus('Reordering is off while the list is sorted or searched. Switch to "My order" and clear the search to move tasks.');
+      return;
+    }
     const i = visible.findIndex((t) => t.id === id);
     const other = visible[i + dir];
-    if (i >= 0 && other) dispatch({ type: 'move', from: id, to: other.id });
+    if (i < 0 || !other) return;
+    focusAfterMove.current = id;
+    dispatch({ type: 'move', from: id, to: other.id });
+    setStatus(`Moved "${visible[i].text}" to position ${i + dir + 1} of ${visible.length}`);
   }
 
   const paletteItems = [
@@ -180,12 +225,15 @@ export default function App() {
     ...lists.map((l) => ({ id: `l-${l.id}`, label: `Go to list: ${l.name}`, run: () => setView(`list:${l.id}` as View) })),
     { id: 'theme', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`, run: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
     { id: 'export', label: 'Export backup', run: () => exportData() },
-    ...(totalDone > 0 ? [{ id: 'clear', label: 'Clear completed tasks', run: () => dispatch({ type: 'clearDone' }) }] : []),
+    ...(totalDone > 0 ? [{ id: 'clear', label: 'Clear completed tasks', run: clearCompleted }] : []),
     ...tasks.map((t) => ({ id: `t-${t.id}`, label: `Open task: ${t.text}`, run: () => setOpenId(t.id) })),
   ];
 
   function addList(name: string) {
-    setLists([...lists, { id: crypto.randomUUID(), name, color: PALETTE[lists.length % PALETTE.length] }]);
+    const existing = lists.find((l) => l.name.toLowerCase() === name.toLowerCase());
+    const list = existing ?? { id: uid(), name, color: LIST_COLORS[lists.length % LIST_COLORS.length] };
+    if (!existing) setLists([...lists, list]);
+    setView(`list:${list.id}`); // a duplicate name just takes you to the list that already exists
   }
 
   function deleteList(id: string) {
@@ -207,13 +255,15 @@ export default function App() {
   }
 
   async function importData(file: File) {
-    const parsed = parseBackup(await file.text());
-    if (!parsed) { window.alert('That file is not a valid backup.'); return; }
+    const parsed = parseBackup(await file.text().catch(() => ''));
+    if (!parsed) { window.alert('That file is not a valid backup. Nothing was changed.'); return; }
     if (!window.confirm(`Replace your current data with ${parsed.tasks.length} imported tasks?`)) return;
     dispatch({ type: 'replaceAll', tasks: parsed.tasks });
-    setLists(parsed.lists.length ? parsed.lists : DEFAULT_LISTS);
+    setLists(parsed.lists);
     setView('all');
     setOpenId(null);
+    setUndo(null);
+    setStatus(`Imported ${parsed.tasks.length} tasks`);
   }
 
   return (
@@ -221,51 +271,59 @@ export default function App() {
       <Sidebar
         view={view} onView={setView} counts={viewCounts} lists={lists}
         onAddList={addList} onDeleteList={deleteList} onExport={exportData} onImport={importData}
-        accent={accent} onAccent={setAccent}
+        accent={accent} onAccent={setAccent} open={menu} onClose={() => setMenu(false)}
       />
 
       <main className="app">
         <div className="topbar">
-          <p className="date">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <button className="icon-btn menu-btn" type="button" onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu}>
+            <MenuIcon />
+          </button>
+          <p className="date">
+            <span className="date-long">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <span className="date-short" aria-hidden="true">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+          </p>
           <button className="cmd" type="button" onClick={() => setPalette(true)} aria-label="Open command palette">
-            Commands <kbd>Ctrl K</kbd>
+            Commands <kbd>{MOD_KEY} K</kbd>
           </button>
           <button className="icon-btn" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-            {theme === 'dark' ? (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-              </svg>
-            )}
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
         </div>
 
         <header className="hero">
           <div>
-            <h1>{greeting()}</h1>
-            <p className="sub">{sub}</p>
+            <h1>{hello}</h1>
+            <p className="sub">
+              {tasks.length === 0 ? 'Add a task to get started.'
+                : allActive === 0 ? 'Everything is done. Nice work.'
+                : <>{allActive} to do{overdue > 0 && <>, <strong>{overdue} overdue</strong></>}</>}
+            </p>
           </div>
           <ProgressRing done={totalDone} total={tasks.length} />
         </header>
 
         <TaskForm onAdd={handleAdd} />
 
-        <section className="panel">
-          <h2 className="view-title">{viewTitle}</h2>
+        <section className="panel" aria-labelledby="view-title">
+          <div className="panel-head">
+            <h2 className="view-title" id="view-title">{viewTitle}</h2>
+            <span className={`badge${view === 'today' && viewCounts.today > 0 ? ' sun' : ''}`}>
+              {viewCounts[view] ?? 0}<span className="sr-only"> to do</span>
+            </span>
+          </div>
           <Filters filter={filter} counts={counts} onFilter={setFilter} query={query} onQuery={setQuery}
             sort={sort} onSort={setSort} searchRef={searchRef} />
-          <ul className="list" aria-live="polite">
+          <ul className="list" ref={listRef}>
             {visible.map((t) => (
               <TaskItem
                 key={t.id}
                 task={t}
                 list={currentListId ? undefined : lists.find((l) => l.id === t.listId)}
+                query={query}
                 draggable={canDrag}
-                onToggle={(id) => dispatch({ type: 'toggle', id, nextId: crypto.randomUUID() })}
+                onToggle={handleToggle}
                 onDelete={handleDelete}
                 onEdit={(id, text) => dispatch({ type: 'edit', id, text })}
                 onOpen={setOpenId}
@@ -275,20 +333,15 @@ export default function App() {
             ))}
           </ul>
           {visible.length === 0 && (
-            <div className="empty">
-              <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="12" y="10" width="40" height="44" rx="8" /><path d="M22 28l5 5 10-11M22 44h20" />
-              </svg>
-              <p>{query.trim() ? `No tasks match "${query.trim()}".` : EMPTY[filter]}</p>
-            </div>
+            <EmptyState kind={emptyKind} listName={currentListId ? viewTitle : undefined}
+              query={query.trim()} onClearSearch={() => setQuery('')} />
           )}
           <footer className="foot">
-            <span>N new task, / search, Ctrl+K commands. Alt+Up/Down reorders.</span>
-            {totalDone > 0 && (
-              <button className="link" type="button" onClick={() => dispatch({ type: 'clearDone' })}>Clear completed</button>
-            )}
+            <span className="keys"><kbd>N</kbd> new task · <kbd>/</kbd> search · <kbd>Alt</kbd> <kbd>↑↓</kbd> reorder</span>
+            {totalDone > 0 && <button className="link" type="button" onClick={clearCompleted}>Clear completed</button>}
           </footer>
         </section>
+        <p className="sr-only" role="status">{status}</p>
       </main>
 
       {openTask && (
@@ -298,13 +351,13 @@ export default function App() {
           lists={lists}
           onClose={() => setOpenId(null)}
           onUpdate={(patch) => dispatch({ type: 'update', id: openTask.id, patch })}
-          onAddSub={(text) => dispatch({ type: 'addSub', taskId: openTask.id, id: crypto.randomUUID(), text })}
+          onAddSub={(text) => dispatch({ type: 'addSub', taskId: openTask.id, id: uid(), text })}
           onToggleSub={(subId) => dispatch({ type: 'toggleSub', taskId: openTask.id, subId })}
           onDeleteSub={(subId) => dispatch({ type: 'deleteSub', taskId: openTask.id, subId })}
           onDelete={() => handleDelete(openTask.id)}
         />
       )}
-      {undo && <Toast message="Task deleted" onUndo={handleUndo} />}
+      {undo && <Toast key={undo.id} message={undo.message} onUndo={handleUndo} onDismiss={() => setUndo(null)} />}
       {palette && <Palette items={paletteItems} onClose={() => setPalette(false)} />}
     </div>
   );

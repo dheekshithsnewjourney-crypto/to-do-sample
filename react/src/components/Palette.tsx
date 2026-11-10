@@ -1,4 +1,5 @@
-import { KeyboardEvent, useEffect, useState } from 'react';
+import { type KeyboardEvent, useRef, useState } from 'react';
+import { useDialog } from '../hooks';
 
 export interface PaletteItem {
   id: string;
@@ -11,38 +12,45 @@ interface Props {
   onClose: () => void;
 }
 
+// A combobox with a listbox popup: focus stays in the input, and the active option is
+// announced through aria-activedescendant.
 export default function Palette({ items, onClose }: Props) {
   const [q, setQ] = useState('');
   const [index, setIndex] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, true, onClose);
 
   const filtered = items.filter((x) => x.label.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8);
+  const active = Math.min(index, filtered.length - 1);
 
-  useEffect(() => { setIndex(0); }, [q]);
+  function choose(item: PaletteItem | undefined) {
+    if (!item) return;
+    onClose();
+    item.run();
+  }
 
   function onKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Escape') onClose();
-    if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(Math.min(index + 1, filtered.length - 1)); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setIndex(Math.max(index - 1, 0)); }
-    if (e.key === 'Enter') {
-      const item = filtered[index];
-      if (item) { onClose(); item.run(); }
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(Math.min(active + 1, filtered.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setIndex(Math.max(active - 1, 0)); }
+    if (e.key === 'Enter') choose(filtered[active]);
   }
 
   return (
     <>
-      <div className="overlay" onClick={onClose} />
-      <div className="palette" role="dialog" aria-label="Command palette">
-        <input autoFocus type="text" placeholder="Type a command or task name" aria-label="Command" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} />
-        <ul>
+      <div className="overlay top" onClick={onClose} />
+      <div ref={ref} className="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <input type="text" role="combobox" aria-label="Command" aria-expanded="true" aria-controls="palette-list" aria-autocomplete="list"
+          aria-activedescendant={filtered[active] ? `palette-${active}` : undefined}
+          placeholder="Type a command or task name" value={q}
+          onChange={(e) => { setQ(e.target.value); setIndex(0); }} onKeyDown={onKey} />
+        <ul id="palette-list" role="listbox" aria-label="Commands">
           {filtered.map((item, i) => (
-            <li key={item.id} className={i === index ? 'active' : ''}
-              onMouseEnter={() => setIndex(i)}
-              onClick={() => { onClose(); item.run(); }}>
+            <li key={item.id} id={`palette-${i}`} role="option" aria-selected={i === active} className={i === active ? 'active' : ''}
+              onMouseEnter={() => setIndex(i)} onClick={() => choose(item)}>
               {item.label}
             </li>
           ))}
-          {filtered.length === 0 && <li className="none">No matches</li>}
+          {filtered.length === 0 && <li className="none" role="presentation">No matches</li>}
         </ul>
       </div>
     </>

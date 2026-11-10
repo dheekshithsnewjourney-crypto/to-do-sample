@@ -1,9 +1,9 @@
-import { nextDue } from './dates';
+import { nextDueFrom, parseISO } from './dates';
 import type { Priority, Task } from './types';
 
 export type Action =
   | { type: 'add'; id: string; text: string; priority: Priority; dueDate?: string; listId?: string }
-  | { type: 'toggle'; id: string; nextId?: string }
+  | { type: 'toggle'; id: string; nextId?: string; today?: string }
   | { type: 'delete'; id: string }
   | { type: 'restore'; task: Task; index: number }
   | { type: 'edit'; id: string; text: string }
@@ -19,6 +19,21 @@ export type Action =
 const mapTask = (state: Task[], id: string, fn: (t: Task) => Task) =>
   state.map((t) => (t.id === id ? fn(t) : t));
 
+// Completing a repeating task: mark it done and put the next occurrence right where it was.
+function completeRepeating(state: Task[], target: Task, nextId: string, today?: string): Task[] {
+  const anchor = target.repeatDay ?? parseISO(target.dueDate)?.getDate();
+  const dueDate = nextDueFrom(target.dueDate!, target.repeat!, today, anchor);
+  const exists = state.some((t) => t.id !== target.id && !t.done && t.text === target.text && t.dueDate === dueDate);
+  if (exists) return mapTask(state, target.id, (t) => ({ ...t, done: true }));
+
+  const next: Task = { ...target, id: nextId, done: false, dueDate };
+  delete next.spawnedId;
+  if (target.subtasks) next.subtasks = target.subtasks.map((s) => ({ ...s, done: false }));
+  if (target.repeat === 'monthly') next.repeatDay = anchor;
+  // The finished task remembers what it created, so un-completing it can take that back.
+  return state.flatMap((t) => (t.id === target.id ? [next, { ...t, done: true, spawnedId: nextId }] : [t]));
+}
+
 // Pure function: easy to unit test, no side effects.
 export function tasksReducer(state: Task[], action: Action): Task[] {
   switch (action.type) {
@@ -33,23 +48,17 @@ export function tasksReducer(state: Task[], action: Action): Task[] {
     case 'toggle': {
       const target = state.find((t) => t.id === action.id);
       if (!target) return state;
-      const next = state.map((t) => (t.id === action.id ? { ...t, done: !t.done } : t));
-      // Completing a repeating task creates the next occurrence right where it was
       if (!target.done && target.repeat && target.dueDate && action.nextId) {
-        const dueDate = nextDue(target.dueDate, target.repeat);
-        const exists = state.some((t) => t.id !== target.id && !t.done && t.text === target.text && t.dueDate === dueDate);
-        if (!exists) {
-          const clone: Task = {
-            ...target,
-            id: action.nextId,
-            done: false,
-            dueDate,
-            subtasks: target.subtasks?.map((s) => ({ ...s, done: false })),
-          };
-          next.splice(state.findIndex((t) => t.id === action.id), 0, clone);
-        }
+        return completeRepeating(state, target, action.nextId, action.today);
       }
-      return next;
+      if (target.done && target.spawnedId) {
+        // Undoing a completion also removes the occurrence it spawned, unless that one is done already.
+        const { spawnedId, ...rest } = target;
+        return state
+          .filter((t) => t.id !== spawnedId || t.done)
+          .map((t) => (t.id === target.id ? { ...rest, done: false } : t));
+      }
+      return mapTask(state, action.id, (t) => ({ ...t, done: !t.done }));
     }
     case 'delete':
       return state.filter((t) => t.id !== action.id);
@@ -66,8 +75,16 @@ export function tasksReducer(state: Task[], action: Action): Task[] {
     }
     case 'update': {
       const patch = { ...action.patch };
-      if (patch.text !== undefined && !patch.text.trim()) delete patch.text;
-      return mapTask(state, action.id, (t) => ({ ...t, ...patch }));
+      if (patch.text !== undefined) {
+        patch.text = patch.text.trim();
+        if (!patch.text) delete patch.text;
+      }
+      return mapTask(state, action.id, (t) => {
+        const next = { ...t, ...patch };
+        if ('dueDate' in patch) delete next.repeatDay; // a hand-picked date starts a new monthly anchor
+        if (!next.dueDate) delete next.repeat; // a repeat needs a date to count from
+        return next;
+      });
     }
     case 'addSub': {
       const text = action.text.trim();
@@ -88,6 +105,7 @@ export function tasksReducer(state: Task[], action: Action): Task[] {
         subtasks: (t.subtasks ?? []).filter((s) => s.id !== action.subId),
       }));
     case 'move': {
+      // Used by both drag and drop and Alt+Arrow: the task takes the target's slot.
       const from = state.findIndex((t) => t.id === action.from);
       const to = state.findIndex((t) => t.id === action.to);
       if (from < 0 || to < 0 || from === to) return state;

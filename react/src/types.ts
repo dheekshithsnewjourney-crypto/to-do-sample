@@ -20,11 +20,13 @@ export interface Task {
   notes?: string;
   listId?: string;
   subtasks?: Subtask[];
-  repeat?: Repeat; // needs a dueDate to take effect
+  repeat?: Repeat; // only ever set together with a dueDate
+  repeatDay?: number; // monthly repeats: the day of the month the series started on (see nextDue)
+  spawnedId?: string; // completed repeating task: id of the next occurrence it created (removed on undo)
 }
 
 export interface List {
   id: string;
   name: string;
-  color: string;
+  color: string; // kept so older backups round-trip; the UI itself stays red, yellow and grey
 }

@@ -1,6 +1,7 @@
-import { FormEvent, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { parseQuickAdd } from '../quickadd';
 import type { Priority } from '../types';
+import { AlertIcon } from './icons';
 
 interface Props {
   onAdd: (text: string, priority: Priority, dueDate?: string) => void;
@@ -19,7 +20,6 @@ export default function TaskForm({ onAdd }: Props) {
       setError('Enter a task before adding it.');
       return;
     }
-    setError('');
     onAdd(parsed.text, parsed.priority ?? priority, parsed.dueDate ?? (due || undefined));
     setText('');
     setDue('');
@@ -32,10 +32,13 @@ export default function TaskForm({ onAdd }: Props) {
         id="new-task"
         className="title"
         type="text"
-        placeholder='Add a task. Try "Pay rent tomorrow !high"'
+        placeholder='Try "Pay rent tomorrow !high"'
         maxLength={120}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? 'new-task-error' : undefined}
+        data-focus-fallback
+        onChange={(e) => { setText(e.target.value); setError(''); }}
       />
       <div className="row">
         <label className="sr-only" htmlFor="due">Due date</label>
@@ -48,7 +51,7 @@ export default function TaskForm({ onAdd }: Props) {
         </select>
         <button type="submit" className="primary">Add task</button>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && <p className="error" id="new-task-error" role="alert"><AlertIcon size={16} />{error}</p>}
     </form>
   );
 }

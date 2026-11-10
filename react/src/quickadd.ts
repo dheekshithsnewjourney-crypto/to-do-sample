@@ -7,26 +7,33 @@ export interface Parsed {
   dueDate?: string;
 }
 
+// Tokens only count as whole, whitespace-separated words, so "tomorrow's" or "wow!high" stay text.
+const PRIORITY = /(^|\s)!(high|medium|med|low)(?=\s|$)/gi;
+const DATE_WORD = /(^|\s)(today|tomorrow)(?=\s|$)/gi;
+const tidy = (s: string) => s.replace(/\s+/g, ' ').trim();
+
 // "Pay rent tomorrow !high" -> text "Pay rent", due tomorrow, high priority
 export function parseQuickAdd(input: string, now = new Date()): Parsed {
   let text = input;
   let priority: Priority | undefined;
   let dueDate: string | undefined;
 
-  const p = text.match(/(^|\s)!(high|med|low)\b/i);
-  if (p) {
-    priority = p[2].toLowerCase() as Priority;
-    text = text.replace(p[0], ' ');
-  }
+  // Every priority token is removed; if several were typed, the last one wins.
+  text = text.replace(PRIORITY, (_match, lead: string, word: string) => {
+    const level = word.toLowerCase();
+    priority = level === 'medium' ? 'med' : (level as Priority);
+    return lead;
+  });
 
-  const d = text.match(/\b(today|tomorrow)\b/i);
-  if (d) {
-    const rest = text.replace(d[0], ' ').replace(/\s+/g, ' ').trim();
+  // The last standalone date word is the due date. Earlier ones are part of the title.
+  const last = [...text.matchAll(DATE_WORD)].pop();
+  if (last) {
+    const rest = tidy(text.slice(0, last.index) + ' ' + text.slice(last.index + last[0].length));
     if (rest) { // a task that is only the word "today" keeps it as its title
-      const offset = d[1].toLowerCase() === 'today' ? 0 : 1;
+      const offset = last[2].toLowerCase() === 'today' ? 0 : 1;
       dueDate = todayISO(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
       text = rest;
     }
   }
-  return { text: text.replace(/\s+/g, ' ').trim(), priority, dueDate };
+  return { text: tidy(text), priority, dueDate };
 }
