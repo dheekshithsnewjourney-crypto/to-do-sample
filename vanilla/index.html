@@ -5,21 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tasks – a simple to-do app</title>
   <meta name="description" content="A lightweight to-do app built with vanilla HTML, CSS and JavaScript.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23D62839'/%3E%3Cpath d='M9 16.5l5 5 9-10.5' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
     <header class="head">
-      <h1>Tasks</h1>
+      <h1>
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+        </span>
+        Tasks
+      </h1>
       <p class="date" id="today"></p>
     </header>
 
-    <form class="add" id="add-form" autocomplete="off">
+    <form class="add" id="add-form" autocomplete="off" novalidate>
       <label class="sr-only" for="new-task">New task</label>
-      <input id="new-task" type="text" placeholder="What needs doing?" maxlength="120" required>
+      <input id="new-task" type="text" placeholder="What needs doing?" maxlength="120" aria-describedby="error">
       <label class="sr-only" for="priority">Priority</label>
       <select id="priority">
         <option value="low">Low</option>
@@ -31,21 +38,27 @@
 
     <p class="error" id="error" role="alert" hidden></p>
 
-    <nav class="filters" aria-label="Filter tasks">
-      <button data-filter="all" class="on" aria-pressed="true">All</button>
-      <button data-filter="active" aria-pressed="false">Active</button>
-      <button data-filter="done" aria-pressed="false">Done</button>
-    </nav>
+    <section class="panel" aria-label="Tasks">
+      <div class="filters" role="group" aria-label="Filter tasks">
+        <button type="button" data-filter="all" class="on" aria-pressed="true">All</button>
+        <button type="button" data-filter="active" aria-pressed="false">Active</button>
+        <button type="button" data-filter="done" aria-pressed="false">Done</button>
+      </div>
 
-    <ul class="list" id="list" aria-live="polite"></ul>
+      <ul class="list" id="list"></ul>
 
-    <p class="empty" id="empty" hidden></p>
+      <div class="empty" id="empty" hidden>
+        <h2 id="empty-title"></h2>
+        <p id="empty-text"></p>
+      </div>
 
-    <footer class="foot">
-      <span id="count">0 tasks left</span>
-      <button class="link" id="clear" type="button">Clear completed</button>
-    </footer>
+      <footer class="foot">
+        <span id="count">0 tasks left</span>
+        <button class="link" id="clear" type="button">Clear completed</button>
+      </footer>
+    </section>
     <p class="hint">Double-click a task (or press F2) to edit. Esc cancels.</p>
+    <p class="sr-only" id="status" role="status"></p>
   </main>
   <script src="script.js"></script>
 </body>

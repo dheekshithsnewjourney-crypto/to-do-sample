@@ -1,5 +1,8 @@
-import { FormEvent, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDialog } from '../hooks';
 import type { List, View } from '../types';
+import { monogram } from '../views';
+import { CheckIcon, CloseIcon, PlusIcon } from './icons';
 
 const SMART: { id: View; label: string }[] = [
   { id: 'all', label: 'All tasks' },
@@ -8,7 +11,15 @@ const SMART: { id: View; label: string }[] = [
   { id: 'overdue', label: 'Overdue' },
 ];
 
-const ACCENTS = ['#5b5bd6', '#0ea5e9', '#10a37f', '#e5484d', '#d6409f', '#f08a00'];
+// `null` is the brand red from the stylesheet (it differs between light and dark).
+const ACCENTS: { name: string; value: string | null; swatch: string }[] = [
+  { name: 'Red (default)', value: null, swatch: '#D62839' },
+  { name: 'Tangerine', value: '#E8590C', swatch: '#E8590C' },
+  { name: 'Green', value: '#2B8A3E', swatch: '#2B8A3E' },
+  { name: 'Blue', value: '#1C7ED6', swatch: '#1C7ED6' },
+  { name: 'Violet', value: '#7048E8', swatch: '#7048E8' },
+  { name: 'Pink', value: '#D6409F', swatch: '#D6409F' },
+];
 
 interface Props {
   view: View;
@@ -21,83 +32,103 @@ interface Props {
   onImport: (file: File) => void;
   accent: string | null;
   onAccent: (c: string | null) => void;
+  open: boolean; // only matters on narrow screens, where the sidebar is an off-canvas drawer
+  onClose: () => void;
 }
 
-export default function Sidebar({ view, onView, counts, lists, onAddList, onDeleteList, onExport, onImport, accent, onAccent }: Props) {
+export default function Sidebar({ view, onView, counts, lists, onAddList, onDeleteList, onExport, onImport, accent, onAccent, open, onClose }: Props) {
   const [name, setName] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLElement>(null);
+  useDialog(ref, open, onClose); // focus trap, Escape and focus restore while it is a drawer
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    onAddList(name.trim());
-    setName('');
+  function go(v: View) {
+    onView(v);
+    onClose();
   }
 
   return (
-    <aside className="side">
-      <p className="brand">Tasks</p>
+    <>
+      {open && <div className="scrim" onClick={onClose} />}
+      <aside ref={ref} className={`side${open ? ' open' : ''}`} aria-label="Views and lists"
+        role={open ? 'dialog' : undefined} aria-modal={open ? true : undefined}>
+        <div className="side-head">
+          <p className="brand"><span className="brand-mark"><CheckIcon size={20} /></span>Tasks</p>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close menu"><CloseIcon /></button>
+        </div>
 
-      <nav className="views" aria-label="Views">
-        {SMART.map((v) => (
-          <button key={v.id} className={view === v.id ? 'on' : ''} aria-current={view === v.id} onClick={() => onView(v.id)}>
-            <span>{v.label}</span>
-            <span className="n">{counts[v.id] ?? 0}</span>
-          </button>
-        ))}
-      </nav>
-
-      <p className="side-title">Lists</p>
-      <nav className="views" aria-label="Lists">
-        {lists.map((l) => {
-          const id = `list:${l.id}` as View;
-          return (
-            <div key={l.id} className={`list-row${view === id ? ' on' : ''}`}>
-              <button className={view === id ? 'on' : ''} aria-current={view === id} onClick={() => onView(id)}>
-                <span><i className="dot" style={{ background: l.color }} />{l.name}</span>
-                <span className="n">{counts[id] ?? 0}</span>
+        <nav className="views" aria-label="Views">
+          {SMART.map((v) => {
+            const n = counts[v.id] ?? 0;
+            return (
+              <button key={v.id} type="button" className={view === v.id ? 'on' : ''} aria-current={view === v.id ? 'page' : undefined} onClick={() => go(v.id)}>
+                <span className="label">{v.label}</span>
+                <span className={`n${v.id === 'today' && n > 0 ? ' sun' : ''}`}>{n}</span>
               </button>
-              <button className="x" aria-label={`Delete list ${l.name}`} onClick={() => onDeleteList(l.id)}>×</button>
-            </div>
-          );
-        })}
-      </nav>
+            );
+          })}
+        </nav>
 
-      <form className="new-list" onSubmit={submit}>
-        <label className="sr-only" htmlFor="new-list">New list name</label>
-        <input id="new-list" type="text" placeholder="New list" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
-      </form>
+        <p className="side-title" id="lists-title">Lists</p>
+        <nav className="views" aria-labelledby="lists-title">
+          {lists.map((l) => {
+            const id = `list:${l.id}` as View;
+            return (
+              <div key={l.id} className="list-row">
+                <button type="button" className={view === id ? 'on' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => go(id)}>
+                  <span className="mark" aria-hidden="true">{monogram(l.name)}</span>
+                  <span className="label">{l.name}</span>
+                  <span className="n">{counts[id] ?? 0}</span>
+                </button>
+                <button type="button" className="x" aria-label={`Delete list ${l.name}`} onClick={() => onDeleteList(l.id)}><CloseIcon size={16} /></button>
+              </div>
+            );
+          })}
+        </nav>
 
-      <p className="side-title">Accent colour</p>
-      <div className="swatches">
-        {ACCENTS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            className="swatch"
-            style={{ background: c }}
-            aria-label={`Accent colour ${c}`}
-            aria-pressed={accent === c}
-            onClick={() => onAccent(accent === c ? null : c)}
+        <form className="new-list" onSubmit={(e) => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          onAddList(name.trim());
+          setName('');
+        }}>
+          <label className="sr-only" htmlFor="new-list">New list name</label>
+          <input id="new-list" type="text" placeholder="New list" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
+          <button type="submit" aria-label="Add list"><PlusIcon size={16} /></button>
+        </form>
+
+        <p className="side-title" id="accent-title">Accent colour</p>
+        <div className="swatches" role="group" aria-labelledby="accent-title">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.name}
+              type="button"
+              className="swatch"
+              style={{ background: a.swatch }}
+              title={a.name}
+              aria-label={a.name}
+              aria-pressed={accent === a.value}
+              onClick={() => onAccent(a.value)}
+            />
+          ))}
+        </div>
+
+        <div className="data">
+          <button type="button" className="link" onClick={onExport}>Export backup</button>
+          <button type="button" className="link" onClick={() => fileRef.current?.click()}>Import backup</button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onImport(f);
+              e.target.value = '';
+            }}
           />
-        ))}
-      </div>
-
-      <div className="data">
-        <button type="button" className="link" onClick={onExport}>Export backup</button>
-        <button type="button" className="link" onClick={() => fileRef.current?.click()}>Import backup</button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onImport(f);
-            e.target.value = '';
-          }}
-        />
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }
