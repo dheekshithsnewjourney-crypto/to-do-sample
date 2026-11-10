@@ -101,8 +101,18 @@ describe('dueInfo', () => {
   });
   it('counts whole days across daylight-saving changes and month ends', () => {
     expect(dueInfo('2026-03-07', false, new Date(2026, 2, 9, 9, 0)).label).toBe('2 days overdue');
-    expect(dueInfo('2026-10-24', false, new Date(2026, 10, 2, 9, 0)).label).toBe('9 days overdue');
+    // US clocks change on 2026-11-01, EU clocks on 2026-10-25
+    expect(dueInfo('2026-10-27', false, new Date(2026, 10, 2, 9, 0)).label).toBe('6 days overdue');
+    expect(dueInfo('2026-10-24', false, new Date(2026, 9, 30, 9, 0)).label).toBe('6 days overdue');
     expect(dueInfo('2026-02-28', false, new Date(2026, 2, 1, 0, 30)).label).toBe('Due yesterday');
+  });
+  it('switches from a day count to a date after one week', () => {
+    expect(dueInfo('2026-11-03', false, noon)).toEqual({ label: '7 days overdue', tone: 'overdue' });
+    const short = new Date(2026, 10, 2).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    expect(dueInfo('2026-11-02', false, noon)).toEqual({ label: `Overdue since ${short}`, tone: 'overdue' });
+    const long = new Date(2025, 9, 6).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    expect(dueInfo('2025-10-06', false, noon)).toEqual({ label: `Overdue since ${long}`, tone: 'overdue' });
+    expect(dueInfo('2025-10-06', false, noon).label).toMatch(/2025/);
   });
   it('survives a malformed date instead of throwing', () => {
     expect(() => dueInfo('banana', false, noon)).not.toThrow();

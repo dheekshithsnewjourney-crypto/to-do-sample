@@ -50,7 +50,7 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
   return (
     <>
       {open && <div className="scrim" onClick={onClose} />}
-      <aside ref={ref} className={`side${open ? ' open' : ''}`} aria-label="Views and lists"
+      <aside ref={ref} id="sidebar" className={`side${open ? ' open' : ''}`} aria-label="Views and lists"
         role={open ? 'dialog' : undefined} aria-modal={open ? true : undefined}>
         <div className="side-head">
           <p className="brand"><span className="brand-mark"><CheckIcon size={20} /></span>Tasks</p>

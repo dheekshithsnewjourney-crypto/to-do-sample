@@ -1,3 +1,5 @@
+import { count } from '../views';
+
 interface Props {
   done: number;
   total: number;
@@ -10,7 +12,7 @@ export default function ProgressRing({ done, total }: Props) {
   const complete = total > 0 && done === total;
   return (
     <div className={`ring${complete ? ' complete' : ''}`} role="img"
-      aria-label={complete ? `All ${total} tasks done` : `${done} of ${total} tasks done`}>
+      aria-label={complete ? `All ${count(total, 'task')} done` : `${done} of ${count(total, 'task')} done`}>
       <svg viewBox="0 0 72 72" aria-hidden="true">
         <circle className="track" cx="36" cy="36" r={r} />
         <circle className="bar" cx="36" cy="36" r={r} strokeDasharray={c} strokeDashoffset={c * (1 - pct)} transform="rotate(-90 36 36)" />

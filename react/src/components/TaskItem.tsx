@@ -132,7 +132,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
             }}
             onBlur={() => finish(true)} />
         ) : (
-          <span ref={textRef} className="text" tabIndex={0} title="Double-click or press F2 to rename" onDoubleClick={startEdit}>
+          <span ref={textRef} className="text" tabIndex={0} title="Double-click or press F2 to rename" aria-keyshortcuts="F2" onDoubleClick={startEdit}>
             <Highlight text={task.text} query={query} />
           </span>
         )}

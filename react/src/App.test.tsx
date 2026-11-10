@@ -221,6 +221,18 @@ describe('App: mobile menu', () => {
     expect(document.activeElement).toBe(menu);
   });
 
+  it('names its controls the way they look, and links the menu button to the sidebar', () => {
+    seed([{ text: 'One', done: true }]);
+    render(<App />);
+    const menu = screen.getByRole('button', { name: 'Open menu' });
+    expect(document.getElementById(menu.getAttribute('aria-controls')!)).toBe(document.querySelector('.side'));
+    // The visible word must be part of the accessible name (WCAG 2.5.3 label in name)
+    const commands = screen.getByRole('button', { name: /^Commands/ });
+    fireEvent.click(commands);
+    expect(screen.queryByRole('combobox', { name: 'Command' })).not.toBeNull();
+    expect(screen.getByRole('img', { name: 'All 1 task done' })).not.toBeNull();
+  });
+
   it('closes the menu after picking a view', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));

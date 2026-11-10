@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from './types';
 import { uid } from './uid';
-import { dueForNewTask, inView, monogram } from './views';
+import { count, dueForNewTask, inView, monogram } from './views';
 
 const today = '2026-11-10';
 const task = (over: Partial<Task>): Task => ({ id: 'x', text: 'X', priority: 'med', done: false, ...over });
@@ -71,5 +71,13 @@ describe('uid', () => {
     const a = uid();
     expect(a).toMatch(/\S{8,}/);
     expect(uid()).not.toBe(a);
+  });
+});
+
+describe('count', () => {
+  it('uses the singular only for exactly one', () => {
+    expect(count(0, 'task')).toBe('0 tasks');
+    expect(count(1, 'task')).toBe('1 task');
+    expect(count(2, 'completed task')).toBe('2 completed tasks');
   });
 });

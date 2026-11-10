@@ -52,6 +52,25 @@ npm run contrast
 ```
 It also runs in CI, so a palette change that breaks contrast fails the build.
 
+### Motion and touch
+- Two custom curves: `--ease-out` for things that enter or leave, `--ease-drawer` for the drawer and the mobile menu. Exits are faster than entries.
+- Actions you repeat many times a day do not animate: the command palette opens instantly, and task rows have no entry animation. The check-off is a short settle with no bounce.
+- Buttons scale to 0.96 when pressed. Hover styles apply only to devices with a mouse, so a tap never leaves a stuck hover state.
+- Every control has a hit area of at least 40px (44px on touch screens). Small visuals get an invisible larger target.
+- With "reduce motion" turned on, nothing moves. Fades and colour changes stay, so feedback is not lost.
+
+## Deploy and rollback
+- CI runs on every push and pull request: dependency audit, tests, contrast check, type-check and build.
+- Only a push to `main` deploys to GitHub Pages. Branch runs never deploy.
+- The production build adds a Content Security Policy. GitHub Pages cannot send headers, so it is a meta tag. Each inline script is allowed by its hash, which the build computes.
+
+To roll back a bad release:
+1. Find the bad commit: `git log --oneline`.
+2. Revert it: `git revert <commit>`.
+3. Push to `main`. CI tests the revert and deploys the previous version.
+
+To redeploy a known good commit without new code, run the workflow by hand from the Actions tab ("Run workflow").
+
 ## Built with AI
 This project was built with AI assistance. See [AI_WORKFLOW.md](./AI_WORKFLOW.md) for my prompts, how I verified the output, and the bugs I caught.
 
@@ -61,7 +80,7 @@ Needs Node 22.12 or newer (CI uses Node 26 LTS).
 cd react
 npm install
 npm run dev        # development server
-npm test           # unit and DOM tests (140)
+npm test           # unit and DOM tests (143)
 npm run contrast   # WCAG AA check of the colour tokens
 npm run build      # type-check + production build
 ```

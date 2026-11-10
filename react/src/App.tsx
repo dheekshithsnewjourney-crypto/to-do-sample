@@ -16,7 +16,7 @@ import { tasksReducer } from './reducer';
 import { loadLists, loadTasks, parseBackup, saveLists, saveTasks } from './storage';
 import type { Filter, List, Sort, Task, View } from './types';
 import { uid } from './uid';
-import { dueForNewTask, inView } from './views';
+import { count, dueForNewTask, inView } from './views';
 
 type Theme = 'light' | 'dark';
 interface Undo { id: string; message: string; items: { task: Task; index: number }[] }
@@ -190,7 +190,7 @@ export default function App() {
 
   function clearCompleted() {
     const items = tasks.map((task, index) => ({ task, index })).filter((x) => x.task.done);
-    removeWithUndo(items, `${items.length} completed ${items.length === 1 ? 'task' : 'tasks'} cleared`);
+    removeWithUndo(items, `${count(items.length, 'completed task')} cleared`);
     dispatch({ type: 'clearDone' });
   }
 
@@ -257,13 +257,13 @@ export default function App() {
   async function importData(file: File) {
     const parsed = parseBackup(await file.text().catch(() => ''));
     if (!parsed) { window.alert('That file is not a valid backup. Nothing was changed.'); return; }
-    if (!window.confirm(`Replace your current data with ${parsed.tasks.length} imported tasks?`)) return;
+    if (!window.confirm(`Replace your current data with ${count(parsed.tasks.length, 'imported task')}?`)) return;
     dispatch({ type: 'replaceAll', tasks: parsed.tasks });
     setLists(parsed.lists);
     setView('all');
     setOpenId(null);
     setUndo(null);
-    setStatus(`Imported ${parsed.tasks.length} tasks`);
+    setStatus(`Imported ${count(parsed.tasks.length, 'task')}`);
   }
 
   return (
@@ -276,14 +276,15 @@ export default function App() {
 
       <main className="app">
         <div className="topbar">
-          <button className="icon-btn menu-btn" type="button" onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu}>
+          <button className="icon-btn menu-btn" type="button" onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu} aria-controls="sidebar">
             <MenuIcon />
           </button>
           <p className="date">
             <span className="date-long">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             <span className="date-short" aria-hidden="true">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
           </p>
-          <button className="cmd" type="button" onClick={() => setPalette(true)} aria-label="Open command palette">
+          {/* No aria-label: the visible word "Commands" must be part of the accessible name (WCAG 2.5.3). */}
+          <button className="cmd" type="button" onClick={() => setPalette(true)} aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
             Commands <kbd>{MOD_KEY} K</kbd>
           </button>
           <button className="icon-btn" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

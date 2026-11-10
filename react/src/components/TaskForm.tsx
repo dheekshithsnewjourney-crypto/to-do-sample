@@ -35,6 +35,7 @@ export default function TaskForm({ onAdd }: Props) {
         placeholder='Try "Pay rent tomorrow !high"'
         maxLength={120}
         value={text}
+        aria-required="true"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? 'new-task-error' : undefined}
         data-focus-fallback

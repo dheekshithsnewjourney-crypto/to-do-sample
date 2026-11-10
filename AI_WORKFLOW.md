@@ -89,6 +89,47 @@ A second AI pass over the finished app, run in Claude Code. It diagnosed first, 
 - The drag-highlight test sent `dragleave` with a `relatedTarget`, which tied it to one implementation. That value did not reach the handler in jsdom, so the test failed even against an implementation built on it. The code moved to an enter/leave counter, and the test now sends the enter/leave sequence a browser fires. The expected results (highlighted, still highlighted, cleared) are unchanged. This test was rewritten together with the code, not because its intent was wrong.
 - Three other drag tests gained a `dragenter` event, because the highlight now starts there. Without it the "not a task" and "sorting is on" tests would pass without exercising anything. No assertion was removed; the app-level drag test gained two.
 
+## Design-skills polish pass (Claude Opus 5.5)
+A third pass, run after design rulebooks were installed: Emil Kowalski (emil-design-eng), Jakub Krehel (make-interfaces-feel-better) and ibelick (fixing-accessibility), plus a worst-case data test (break-ui). The look stays the same: same palette, type, layout and signature. Only the details changed.
+
+**How it was checked**
+- Playwright screenshots of the production build, before and after: 375px and 1280px, light and dark, realistic data and worst-case data (140+ tasks, 136-character words, an unbreakable email, Arabic and Japanese text, a 400-day-old due date, 12 long subtasks).
+- A scripted keyboard pass (45 Tab stops, each with a visible focus ring) and a hit-area scan of every button and checkbox.
+- `npm test` (140 → 143), `npm run contrast`, `npm run build`, `npm audit` (0 vulnerabilities).
+
+**What changed**
+
+| Before | After | Why |
+| --- | --- | --- |
+| Rows animated in on every render | No row entry animation | Rows re-mount on each view switch and keyboard reorder; motion on frequent actions feels slow |
+| Command palette faded and rose in | Opens instantly | Opened from the keyboard many times a day |
+| Check-off bounced to 125% | 180ms settle from 85%, no bounce | Seen tens of times a day: feedback, not a show |
+| Drawer and overlay closed with `ease-in` played in reverse | Separate exit keyframes, `ease-out`, faster than the entry | `ease-in` feels slow at the moment the user watches |
+| Built-in easings | `--ease-out` and an iOS-style `--ease-drawer` curve | Built-in curves are too weak |
+| Toast entered with keyframes | CSS transition with `@starting-style` | Transitions can be interrupted when toasts arrive quickly |
+| Press scale 0.97, no transition | 0.96 with a 160ms ease-out | Krehel: always 0.96 |
+| Hover styles on all devices | Only for `(hover: hover) and (pointer: fine)` | Taps left stuck hover states on phones |
+| Reduced motion removed every transition | Removes movement only; fades stay | Reduced motion means fewer animations, not no feedback |
+| Row buttons 34px, checkboxes 24px, swatches 24px, list delete 32px, links 20px tall | At least 40px (44px on touch), with invisible hit areas where the look must stay small | Minimum hit area |
+| Changing counts in proportional digits | `tabular-nums` on counts, badges and the ring | Numbers no longer shift the layout |
+| Headings and body wrapped unevenly | `text-wrap: balance` on headings, `pretty` on text | No single-word last lines |
+| At 375px, "Medium priority" and the date showed cut off | The two fields stack when there is no room | Found with worst-case data |
+| "400 days overdue" | "Overdue since Oct 6, 2025" after one week | A large day count is hard to read |
+| "Imported 1 tasks", "All 1 tasks done" | `Intl.PluralRules` through a `count()` helper | Correct plurals |
+| Commands button labelled "Open command palette" | Name comes from the visible text "Commands" | WCAG 2.5.3: the visible label must be part of the name |
+| Menu button had no link to the sidebar | `aria-controls="sidebar"` | Screen readers can tell what it opens |
+| Date field had no focus ring | All fields show a focus ring | Keyboard pass found it |
+| No Content Security Policy | Build-time CSP meta tag with hashed inline scripts | Harden; checked in a browser with no violations |
+| CI ran only on `main`, and every run deployed | CI on every push and PR; only `main` deploys; write permissions only in the deploy job | Least privilege; branches get tested without shipping |
+
+**Tests changed after they were written, and why**
+- `dates.test.ts` expected "9 days overdue" for Oct 24 → Nov 2. That case also checked day counting across a clock change. The new rule shows a date after 7 days, so the case became two 6-day cases. One crosses the US clock change and one crosses the EU clock change, so the clock-change check is kept. A new test covers the 7-day boundary and the year in old dates.
+
+**Left as is, on purpose**
+- Borders on cards and inputs stay. They are structure, and the bold ink border is part of this design.
+- The completion "cheer" on the progress ring keeps its overshoot. It happens rarely, and a rare celebration may have some delight.
+- The vanilla version is a separate, no-build reference app. This pass changed only the React app that is deployed.
+
 ## Takeaways
 - Diagnose first, then fix: I list what's wrong before asking the AI to change anything.
 - A passing test means nothing if the AI weakened the assertion to get it green, so I read the diffs.

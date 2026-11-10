@@ -17,6 +17,12 @@ export function monogram(name: string): string {
   return letters.join('').toUpperCase();
 }
 
+// "1 task", "2 tasks": Intl.PluralRules picks the form, so counts never read "1 tasks".
+const plurals = new Intl.PluralRules('en');
+export function count(n: number, noun: string): string {
+  return `${n} ${plurals.select(n) === 'one' ? noun : `${noun}s`}`;
+}
+
 // A task added while looking at Today is due today, so it appears where it was added.
 export function dueForNewTask(view: View, today: string, explicit?: string): string | undefined {
   return explicit ?? (view === 'today' ? today : undefined);
