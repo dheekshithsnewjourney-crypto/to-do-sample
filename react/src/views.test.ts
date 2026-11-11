@@ -93,4 +93,14 @@ describe('whenLabel', () => {
     const later = new Date(2026, 10, 14).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
     expect(whenLabel(t({ dueDate: '2026-11-14' }), '2026-11-11')).toBe(later);
   });
+  it('lists the next 7 days one by one, then groups later dates by month', () => {
+    const day7 = new Date(2026, 10, 18).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    expect(whenLabel(t({ dueDate: '2026-11-18' }), '2026-11-11')).toBe(day7);
+    const month = new Intl.DateTimeFormat(undefined, { month: 'long' });
+    expect(whenLabel(t({ dueDate: '2026-11-19' }), '2026-11-11')).toBe(month.format(new Date(2026, 10, 19)));
+    expect(whenLabel(t({ dueDate: '2026-12-20' }), '2026-11-11')).toBe(month.format(new Date(2026, 11, 20)));
+    const monthYear = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+    expect(whenLabel(t({ dueDate: '2027-01-05' }), '2026-11-11')).toBe(monthYear.format(new Date(2027, 0, 5)));
+    expect(whenLabel(t({ dueDate: '2027-01-05' }), '2026-11-11')).toMatch(/2027/);
+  });
 });

@@ -14,8 +14,10 @@ interface Props {
   onOpen: (id: string) => void;
   onMove: (from: string, to: string) => void;
   onNudge: (id: string, dir: -1 | 1) => void;
+  onQuick?: (id: string, action: 'priority' | 'today') => void; // single-key edits: P and T
   when?: string;   // the "when" rail label (Overdue, Today, Thu 13 Nov…), shown on the first row of each run
   first?: boolean; // first row of a run: the rail label shows and a heavy rule opens the group
+  whenCount?: string; // "2 tasks": how many rows the run has, shown under the rail label
 }
 
 const PRIORITY_LABEL = { low: 'Low', med: 'Medium', high: 'High' } as const;
@@ -31,7 +33,7 @@ function Highlight({ text, query }: { text: string; query?: string }) {
   return <>{parts.map((part, i) => (i % 2 ? <mark key={i}>{part}</mark> : part))}</>;
 }
 
-export default function TaskItem({ task, list, query, draggable, onToggle, onDelete, onEdit, onOpen, onMove, onNudge, when, first }: Props) {
+export default function TaskItem({ task, list, query, draggable, onToggle, onDelete, onEdit, onOpen, onMove, onNudge, onQuick, when, first, whenCount }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const [over, setOver] = useState(false);
@@ -78,6 +80,22 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault();
       onNudge(task.id, e.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // Single keys act on the focused row, so hands stay on the keyboard.
+    const row = e.currentTarget;
+    const focusRow = (li: Element | null) => li?.querySelector<HTMLElement>('.text')?.focus();
+    const key = e.key.toLowerCase();
+    if (key === 'p') { e.preventDefault(); onQuick?.(task.id, 'priority'); }
+    if (key === 't') { e.preventDefault(); onQuick?.(task.id, 'today'); }
+    if (key === 'j') { e.preventDefault(); focusRow(row.nextElementSibling); }
+    if (key === 'k') { e.preventDefault(); focusRow(row.previousElementSibling); }
+    if (e.key === 'Enter' && (e.target as HTMLElement).classList.contains('text')) { e.preventDefault(); onOpen(task.id); }
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      focusRow(row.nextElementSibling ?? row.previousElementSibling); // keep a place in the list
+      onDelete(task.id);
     }
   }
 
@@ -118,7 +136,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
       }}
     >
       {/* The rail repeats the due information that the meta row already gives screen readers. */}
-      <span className="when" aria-hidden="true">{first ? when : ''}</span>
+      <span className="when" aria-hidden="true">{first && <>{when}<small>{whenCount}</small></>}</span>
       <input
         className="check"
         type="checkbox"
@@ -127,6 +145,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
         aria-label={`Mark "${task.text}" as ${task.done ? 'not done' : 'done'}`}
       />
       <div className="body">
+        <div className="title">
         {editing ? (
           <input className="edit" type="text" dir="auto" autoFocus maxLength={120} value={draft} aria-label="Edit task"
             onChange={(e) => setDraft(e.target.value)}
@@ -140,8 +159,10 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
             <Highlight text={task.text} query={query} />
           </span>
         )}
+        </div>
+        {/* Priority sits in its own right-hand column on wide screens, and leads the meta line on phones. */}
+        <span className={`pill prio prio-${task.priority}`}><span className="sr-only">Priority: </span>{PRIORITY_LABEL[task.priority]}</span>
         <div className="meta">
-          <span className={`pill prio-${task.priority}`}><span className="sr-only">Priority: </span>{PRIORITY_LABEL[task.priority]}</span>
           {due?.tone === 'today' && <span className="pill due-today"><span className="sr-only">Due </span>Today</span>}
           {due?.tone === 'overdue' && <span className="tag overdue"><AlertIcon size={14} />{due.label}</span>}
           {due?.tone === 'later' && <span className="tag">{due.label}</span>}

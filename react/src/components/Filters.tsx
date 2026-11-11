@@ -46,8 +46,8 @@ export default function Filters({ filter, counts, onFilter, query, onQuery, sort
         />
         <label className="sr-only" htmlFor="sort">Sort tasks</label>
         <select id="sort" value={sort} onChange={(e) => onSort(e.target.value as Sort)}>
+          <option value="due">By day</option>
           <option value="manual">My order</option>
-          <option value="due">Due date</option>
           <option value="priority">Priority</option>
         </select>
       </div>

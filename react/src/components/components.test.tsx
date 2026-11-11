@@ -28,7 +28,7 @@ function DrawerHarness({ task = base, onUpdate = noop }: { task?: Task; onUpdate
       <button>behind the overlay</button>
       {open && (
         <Drawer task={task} lists={[]} onClose={() => setOpen(false)} onUpdate={onUpdate}
-          onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} />
+          onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} canMove />
       )}
     </>
   );
@@ -106,8 +106,11 @@ describe('Drawer focus management', () => {
     openDrawer();
     expect(document.body.classList.contains('locked')).toBe(true);
     fireEvent.click(screen.getByLabelText('Close details'));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(document.body.classList.contains('locked')).toBe(false);
+    // The lock is released in the dialog's effect cleanup, after the dialog leaves the DOM: wait for both.
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.body.classList.contains('locked')).toBe(false);
+    });
   });
 });
 
@@ -123,7 +126,7 @@ describe('Command palette', () => {
     const closePalette = vi.fn();
     render(
       <>
-        <Drawer task={base} lists={[]} onClose={closeDrawer} onUpdate={noop} onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} />
+        <Drawer task={base} lists={[]} onClose={closeDrawer} onUpdate={noop} onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} canMove />
         <Palette items={items} onClose={closePalette} />
       </>,
     );

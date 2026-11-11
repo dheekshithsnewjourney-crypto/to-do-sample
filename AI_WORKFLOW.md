@@ -160,6 +160,18 @@ The owner said the app still looked like generic AI output and asked for a full 
 | No theme-color, safe-area or share metadata; the title named the tech stack | Added, with a rendered 1200×630 share image |
 | The colophon said "nothing leaves your device", but Google Fonts is requested | Copy now says "Nothing is uploaded unless you export it" |
 
+**Correction after the first release of Grid**
+The owner said the first build looked worse than the prototype they chose. They were right: the build had drifted from it, and the finish reviewer had flagged the same points (crowded top line, stacked meta, Overdue not first), which I had rejected. The second pass matches the prototype:
+- The sheet opens sorted **by day** (Overdue first, finished last). "My order" is still there, one choice away. Four tests about manual order now select "My order" first; their assertions are unchanged. Two new tests cover the default order and the disabled Move buttons.
+- The top line is type only; lists open from a "Lists" button. The date is on two lines. Quick-add is one line under one rule.
+- Each group label shows its task count. Title, details and priority are aligned columns. Hairlines start at the task column.
+- The phone menu button no longer shows on desktop (a bug from the first build).
+- This time the owner saw a side-by-side of the prototype and the build before the deploy.
+- A second test ("locks page scrolling while open and releases it afterwards") had the same timing race as the focus test: it checked the lock between the dialog leaving the page and its cleanup. The same assertion now sits inside the `waitFor`. Six full runs: 147/147 each time.
+
+**Ideas from other task apps**
+The owner listed about 40 paid task apps to learn from. Three parallel researchers read public feature pages, help docs and reviews, and returned ideas with source links. Many apps could not be verified (pages blocked or only marketing copy), so only sourced ideas were used: a quick-add preview (Todoist, Akiflow, Notion), one-step rollover of overdue tasks (Tweek, Akiflow), drag onto a day to reschedule (Linear, Things 3), single-key row actions and shortcut hints (Linear, Trello), and month grouping for far dates (Things 3). Points, streaks, calendar sync and AI planning were left out. Seven new tests cover them. One of my new tests failed at first because of the test itself: a title being renamed is an input, so the helper that reads titles did not see it; the check moved to after the rename is cancelled.
+
 **Tests changed after they were written, and why**
 - The two drawer tests in `components.test.tsx` gained `onMove={noop}`, because the drawer has a new required prop. No assertion changed.
 - "returns focus to the element that opened it" failed about 1 run in 5 under full-suite load. Focus returns in the dialog's effect cleanup, which React runs after the dialog leaves the page. The test checked focus between those two steps. The same assertion now sits inside the `waitFor`. Six full runs after the change: 145/145 each time.

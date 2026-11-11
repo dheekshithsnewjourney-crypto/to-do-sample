@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react';
+import { dueInfo } from '../dates';
 import { parseQuickAdd } from '../quickadd';
 import type { Priority } from '../types';
 import { AlertIcon } from './icons';
@@ -7,11 +8,20 @@ interface Props {
   onAdd: (text: string, priority: Priority, dueDate?: string) => void;
 }
 
+const PRIORITY_NAME = { low: 'Low', med: 'Medium', high: 'High' } as const;
+
 export default function TaskForm({ onAdd }: Props) {
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<Priority>('med');
   const [due, setDue] = useState('');
   const [error, setError] = useState('');
+
+  // What quick-add understood, shown before Enter (date words and !priority become chips).
+  const preview = parseQuickAdd(text);
+  const chips = [
+    preview.dueDate ? dueInfo(preview.dueDate, false).label : '',
+    preview.priority ? `${PRIORITY_NAME[preview.priority]} priority` : '',
+  ].filter(Boolean);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -26,7 +36,7 @@ export default function TaskForm({ onAdd }: Props) {
   }
 
   return (
-    <form className="composer" onSubmit={submit} autoComplete="off">
+    <form className={`composer${text || due || priority !== 'med' ? ' filled' : ''}`} onSubmit={submit} autoComplete="off">
       <label className="sr-only" htmlFor="new-task">New task</label>
       <input
         id="new-task"
@@ -53,6 +63,9 @@ export default function TaskForm({ onAdd }: Props) {
         </select>
         <button type="submit" className="primary">Add task</button>
       </div>
+      <p className="reads" aria-live="polite">
+        {chips.length > 0 && <>Adds <strong dir="auto">{preview.text}</strong>{chips.map((c) => <span className="chip" key={c}>{c}</span>)}</>}
+      </p>
       {error && <p className="error" id="new-task-error" role="alert"><AlertIcon size={16} />{error}</p>}
     </form>
   );

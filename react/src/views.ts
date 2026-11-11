@@ -31,6 +31,11 @@ export function dueForNewTask(view: View, today: string, explicit?: string): str
 
 const WHEN = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); // reused, see dates.ts
 
+const MONTH = new Intl.DateTimeFormat(undefined, { month: 'long' });
+const MONTH_YEAR = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const DAY_MS = 86400000;
+const utcDay = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+
 // The "when" rail of the sheet: the group a task belongs to, read left of the row.
 export function whenLabel(t: Task, today: string): string {
   if (t.done) return 'Done';
@@ -39,5 +44,9 @@ export function whenLabel(t: Task, today: string): string {
   if (t.dueDate === today) return 'Today';
   if (t.dueDate === nextDue(today, 'daily')) return 'Tomorrow';
   const d = parseISO(t.dueDate);
-  return d ? WHEN.format(d) : 'No date';
+  const now = parseISO(today);
+  if (!d || !now) return 'No date';
+  // The next 7 days are listed one by one; later dates group under their month.
+  if ((utcDay(d) - utcDay(now)) / DAY_MS <= 7) return WHEN.format(d);
+  return d.getFullYear() === now.getFullYear() ? MONTH.format(d) : MONTH_YEAR.format(d);
 }

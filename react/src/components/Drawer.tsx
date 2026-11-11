@@ -13,11 +13,12 @@ interface Props {
   onDeleteSub: (subId: string) => void;
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void; // a tap alternative to dragging (WCAG 2.5.7)
+  canMove: boolean; // false while the list is sorted by day or priority, or searched
 }
 
 const CLOSE_MS = 180; // matches the .closing animation in index.css
 
-export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onToggleSub, onDeleteSub, onDelete, onMove }: Props) {
+export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onToggleSub, onDeleteSub, onDelete, onMove, canMove }: Props) {
   const [title, setTitle] = useState(task.text);
   const [sub, setSub] = useState('');
   const [closing, setClosing] = useState(false);
@@ -118,9 +119,10 @@ export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onTog
 
         <p className="label" id="d-order">Position</p>
         <div className="order" role="group" aria-labelledby="d-order">
-          <button type="button" className="move" onClick={() => onMove(-1)}>Move up</button>
-          <button type="button" className="move" onClick={() => onMove(1)}>Move down</button>
+          <button type="button" className="move" disabled={!canMove} aria-describedby={canMove ? undefined : 'd-order-hint'} onClick={() => onMove(-1)}>Move up</button>
+          <button type="button" className="move" disabled={!canMove} aria-describedby={canMove ? undefined : 'd-order-hint'} onClick={() => onMove(1)}>Move down</button>
         </div>
+        {!canMove && <p className="hint" id="d-order-hint">Set the sort to "My order" and clear the search to move tasks.</p>}
 
         <button type="button" className="danger" onClick={onDelete}><TrashIcon size={16} />Delete task</button>
       </aside>
