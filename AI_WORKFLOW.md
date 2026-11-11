@@ -169,6 +169,9 @@ The owner said the first build looked worse than the prototype they chose. They 
 - This time the owner saw a side-by-side of the prototype and the build before the deploy.
 - A second test ("locks page scrolling while open and releases it afterwards") had the same timing race as the focus test: it checked the lock between the dialog leaving the page and its cleanup. The same assertion now sits inside the `waitFor`. Six full runs: 147/147 each time.
 
+**Ideas from other task apps**
+The owner listed about 40 paid task apps to learn from. Three parallel researchers read public feature pages, help docs and reviews, and returned ideas with source links. Many apps could not be verified (pages blocked or only marketing copy), so only sourced ideas were used: a quick-add preview (Todoist, Akiflow, Notion), one-step rollover of overdue tasks (Tweek, Akiflow), drag onto a day to reschedule (Linear, Things 3), single-key row actions and shortcut hints (Linear, Trello), and month grouping for far dates (Things 3). Points, streaks, calendar sync and AI planning were left out. Seven new tests cover them. One of my new tests failed at first because of the test itself: a title being renamed is an input, so the helper that reads titles did not see it; the check moved to after the rename is cancelled.
+
 **Tests changed after they were written, and why**
 - The two drawer tests in `components.test.tsx` gained `onMove={noop}`, because the drawer has a new required prop. No assertion changed.
 - "returns focus to the element that opened it" failed about 1 run in 5 under full-suite load. Focus returns in the dialog's effect cleanup, which React runs after the dialog leaves the page. The test checked focus between those two steps. The same assertion now sits inside the `waitFor`. Six full runs after the change: 145/145 each time.

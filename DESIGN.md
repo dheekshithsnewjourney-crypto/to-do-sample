@@ -112,6 +112,9 @@ Square: 2px radius on buttons and inputs, 0 on swatches and badges. Circles only
 - **Check:** 22px ink ring; done fills it with ink and draws a 2px red strike across the title, line by line.
 - **Field controls:** transparent with a 1.5px current-colour border; the primary button inverts (white on red).
 - **Tabs:** text with a 2px underline for the active one.
+- **Quick-add preview:** under the task line, "Adds <title>" followed by yellow marker chips for the date and the priority that were understood.
+- **Field link:** an underlined text button on the field ("Move to today").
+- **Command row:** the label at the left, its shortcut in a small bordered key at the right.
 
 ## Do's and Don'ts
 

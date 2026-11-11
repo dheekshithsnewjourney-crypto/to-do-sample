@@ -19,7 +19,8 @@ import { uid } from './uid';
 import { count, dueForNewTask, inView, whenLabel } from './views';
 
 type Theme = 'light' | 'dark';
-interface Undo { id: string; message: string; items: { task: Task; index: number }[] }
+// `revert` undoes an edit (a new date, for example); without it, `items` are deleted tasks to put back.
+interface Undo { id: string; message: string; items: { task: Task; index: number }[]; revert?: () => void }
 
 const THEME_KEY = 'todo-theme';
 const ACCENT_KEY = 'todo-accent';
@@ -203,10 +204,47 @@ export default function App() {
 
   function handleUndo() {
     if (!undo) return;
+    if (undo.revert) undo.revert();
     // Restoring in ascending index order puts every task back in its old slot.
-    undo.items.forEach(({ task, index }) => dispatch({ type: 'restore', task, index }));
+    else undo.items.forEach(({ task, index }) => dispatch({ type: 'restore', task, index }));
     setUndo(null);
     setStatus('Restored');
+  }
+
+  // Sets new due dates and offers Undo, which puts the old dates back.
+  function redate(changed: Task[], dueDate: string | undefined, message: string) {
+    if (!changed.length) return;
+    changed.forEach((t) => dispatch({ type: 'update', id: t.id, patch: { dueDate } }));
+    setUndo({ id: uid(), message, items: [], revert: () => changed.forEach((t) => dispatch({ type: 'update', id: t.id, patch: { dueDate: t.dueDate } })) });
+  }
+
+  // One step for everything that slipped: late tasks become due today.
+  function moveOverdueToToday() {
+    const late = tasks.filter((t) => !t.done && !!t.dueDate && t.dueDate < today);
+    redate(late, today, `${count(late.length, 'task')} moved to today`);
+  }
+
+  // In "By day" order, dropping a task on another task gives it that task's day.
+  function reschedule(fromId: string, toId: string) {
+    const from = tasks.find((t) => t.id === fromId);
+    const to = tasks.find((t) => t.id === toId);
+    if (!from || !to || from.done || to.done || from.dueDate === to.dueDate) return;
+    if (to.dueDate && to.dueDate < today) { setStatus('A task cannot be moved into Overdue.'); return; }
+    redate([from], to.dueDate, `"${from.text}" moved to ${whenLabel(to, today)}`);
+  }
+
+  // Single-key edits from a focused row: P steps the priority, T makes the task due today.
+  function quick(id: string, action: 'priority' | 'today') {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    focusAfterMove.current = id; // the row may move to another group: keep focus on it
+    if (action === 'priority') {
+      const next = ({ low: 'med', med: 'high', high: 'low' } as const)[task.priority];
+      dispatch({ type: 'update', id, patch: { priority: next } });
+      setStatus(`Priority of "${task.text}" set to ${{ low: 'Low', med: 'Medium', high: 'High' }[next]}`);
+    } else if (task.dueDate !== today) {
+      redate([task], today, `"${task.text}" is due today`);
+    }
   }
 
   // `refocus` is false when the move comes from the drawer: focus must stay inside the dialog.
@@ -224,8 +262,11 @@ export default function App() {
   }
 
   const paletteItems = [
-    { id: 'new', label: 'New task', run: () => { setTimeout(() => document.getElementById('new-task')?.focus(), 0); } },
-    { id: 'search', label: 'Search tasks', run: () => { setTimeout(() => searchRef.current?.focus(), 0); } },
+    { id: 'new', label: 'New task', hint: 'N', run: () => { setTimeout(() => document.getElementById('new-task')?.focus(), 0); } },
+    { id: 'search', label: 'Search tasks', hint: '/', run: () => { setTimeout(() => searchRef.current?.focus(), 0); } },
+    ...(overdue > 0 ? [{ id: 'rollover', label: 'Move overdue tasks to today', run: moveOverdueToToday }] : []),
+    { id: 's-day', label: 'Sort by day', run: () => setSort('due') },
+    { id: 's-mine', label: 'Sort in my order', run: () => setSort('manual') },
     { id: 'v-all', label: 'Go to All tasks', run: () => setView('all') },
     { id: 'v-today', label: 'Go to Today', run: () => setView('today') },
     { id: 'v-up', label: 'Go to Upcoming', run: () => setView('upcoming') },
@@ -328,6 +369,7 @@ export default function App() {
               {tasks.length === 0 ? 'Add a task to get started.'
                 : allActive === 0 ? 'Everything is done.'
                 : <>{count(allActive, 'task')} to do{overdue > 0 && <>, <strong>{overdue} overdue</strong></>}.</>}
+              {overdue > 0 && <>{' '}<button type="button" className="field-link" onClick={moveOverdueToToday}>Move to today</button></>}
             </p>
             <TaskForm onAdd={handleAdd} />
           </div>
@@ -359,12 +401,13 @@ export default function App() {
                   whenCount={first ? count(runCounts.get(i) ?? 1, 'task') : undefined}
                   list={currentListId ? undefined : lists.find((l) => l.id === t.listId)}
                   query={deferredQuery}
-                  draggable={canDrag}
+                  draggable={canDrag || (sort === 'due' && !t.done)}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
                   onEdit={(id, text) => dispatch({ type: 'edit', id, text })}
                   onOpen={setOpenId}
-                  onMove={(from, to) => dispatch({ type: 'move', from, to })}
+                  onMove={(from, to) => (sort === 'due' ? reschedule(from, to) : dispatch({ type: 'move', from, to }))}
+                  onQuick={quick}
                   onNudge={nudge}
                 />
               );

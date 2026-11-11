@@ -22,6 +22,20 @@ A clean, accessible to-do app built twice to show range:
 - **Mobile:** below 820px the sidebar becomes an off-canvas menu. Tested at 375px with no horizontal scroll
 - **Accessible:** focus-trapped dialogs that restore focus on close, labelled controls, a single status region for announcements, visible focus, and reduced-motion support
 
+## Ideas taken from other task apps
+Researched from the public feature pages, help docs and reviews of paid task apps. Only how they work was taken, not how they look. Each one runs with no account and no server.
+
+| In this app | Seen in |
+|---|---|
+| A live preview under the task line shows what quick-add understood ("Tomorrow", "High priority") before Enter | Todoist, Akiflow, Notion |
+| "Move to today" next to the overdue count moves every late task in one step, with Undo | Tweek, Akiflow |
+| In "By day" order, dropping a task on another task gives it that task's day, with Undo | Linear, Things 3 |
+| Single keys on a focused task: P priority, T due today, Enter details, Del delete, J/K next and previous | Linear, Trello |
+| The command menu shows the shortcut beside a command | Linear |
+| The next 7 days are listed one by one; later dates group under their month | Things 3 |
+
+Left out on purpose: points and streaks (pressure, not calm), calendar sync and AI planning (both need a server).
+
 ## Design
 The day as a Swiss International Style poster. A red field at the top states how many tasks remain, at poster scale, next to the date. Below it, a 12-column typographic sheet lists the tasks by when they are due. Full rules and tokens: [DESIGN.md](./DESIGN.md).
 
@@ -68,7 +82,7 @@ Needs Node 22.12 or newer (CI uses Node 26 LTS).
 cd react
 npm install
 npm run dev        # development server
-npm test           # unit and DOM tests (147)
+npm test           # unit and DOM tests (154)
 npm run contrast   # WCAG AA check of the colour tokens
 npm run build      # type-check + production build
 npm run csp        # checks the built page's Content Security Policy

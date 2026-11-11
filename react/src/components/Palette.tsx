@@ -4,6 +4,7 @@ import { useDialog } from '../hooks';
 export interface PaletteItem {
   id: string;
   label: string;
+  hint?: string; // the keyboard shortcut for this command, shown beside it
   run: () => void;
 }
 
@@ -47,7 +48,8 @@ export default function Palette({ items, onClose }: Props) {
           {filtered.map((item, i) => (
             <li key={item.id} id={`palette-${i}`} role="option" aria-selected={i === active} className={i === active ? 'active' : ''}
               onMouseEnter={() => setIndex(i)} onClick={() => choose(item)}>
-              {item.label}
+              <span className="cmd-label">{item.label}</span>
+              {item.hint && <kbd aria-hidden="true">{item.hint}</kbd>}
             </li>
           ))}
           {filtered.length === 0 && <li className="none" role="presentation">No matches</li>}

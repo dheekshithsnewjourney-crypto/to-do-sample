@@ -255,6 +255,105 @@ describe('App: sheet order', () => {
   });
 });
 
+describe('App: quick-add preview', () => {
+  it('shows what the sentence will become before Enter, and clears when there is nothing to show', () => {
+    render(<App />);
+    const input = screen.getByLabelText('New task');
+    fireEvent.change(input, { target: { value: 'Pay rent tomorrow !high' } });
+    expect(document.querySelector('.reads')!.textContent).toBe('Adds Pay rentTomorrowHigh priority');
+    fireEvent.change(input, { target: { value: 'Pay rent' } });
+    expect(document.querySelector('.reads')!.textContent).toBe('');
+  });
+});
+
+describe('App: rescheduling', () => {
+  const stored = () => JSON.parse(localStorage.getItem('todo-app:v1')!) as Task[];
+  const due = (text: string) => stored().find((t) => t.text === text)?.dueDate;
+
+  it('moves every overdue task to today in one step, and Undo puts the old dates back', () => {
+    seed([{ text: 'Late A', dueDate: '2026-11-03' }, { text: 'Late B', dueDate: '2026-11-09' }, { text: 'Fine', dueDate: '2026-11-12' }]);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Move to today' }));
+    expect(document.querySelectorAll('.item .overdue').length).toBe(0);
+    expect(document.querySelectorAll('.item .due-today').length).toBe(2);
+    expect(due('Fine')).toBe('2026-11-12');
+    expect(screen.queryByRole('button', { name: 'Move to today' })).toBeNull();
+    expect(screen.getByText('2 tasks moved to today')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(due('Late A')).toBe('2026-11-03');
+    expect(due('Late B')).toBe('2026-11-09');
+    expect(document.querySelectorAll('.item .overdue').length).toBe(2);
+  });
+
+  it('gives a dragged task the day of the task it is dropped on (By day order), with Undo', () => {
+    seed([{ text: 'A', dueDate: '2026-11-10' }, { text: 'B', dueDate: '2026-11-12' }, { text: 'Late', dueDate: '2026-11-03' }]);
+    render(<App />);
+    const row = (text: string) => screen.getByText(text).closest('.item') as HTMLElement;
+    const data: Record<string, string> = {};
+    const dataTransfer = { types: ['application/x-task'], setData: (t: string, v: string) => { data[t] = v; }, getData: (t: string) => data[t] ?? '', effectAllowed: '', dropEffect: '' };
+    const drag = (from: string, to: string) => {
+      fireEvent.dragStart(row(from), { dataTransfer });
+      fireEvent.dragEnter(row(to), { dataTransfer });
+      fireEvent.dragOver(row(to), { dataTransfer });
+      fireEvent.drop(row(to), { dataTransfer });
+      fireEvent.dragEnd(row(to), { dataTransfer });
+    };
+    drag('A', 'B');
+    expect(due('A')).toBe('2026-11-12');
+    expect(titles()).toEqual(['Late', 'A', 'B']); // still sorted by day, not by where it was dropped
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(due('A')).toBe('2026-11-10');
+    // Overdue is a state, not a day to plan for: a drop there changes nothing
+    drag('B', 'Late');
+    expect(due('B')).toBe('2026-11-12');
+    expect(status()).toBe('A task cannot be moved into Overdue.');
+  });
+});
+
+describe('App: single-key row actions', () => {
+  it('steps priority with P, moves focus with J and K, sets today with T and opens details with Enter', () => {
+    seed([{ text: 'One' }, { text: 'Two' }]);
+    render(<App />);
+    screen.getByText('One').focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'p' });
+    expect(status()).toBe('Priority of "One" set to High');
+    expect(document.activeElement?.textContent).toBe('One');
+    fireEvent.keyDown(document.activeElement!, { key: 'j' });
+    expect(document.activeElement?.textContent).toBe('Two');
+    fireEvent.keyDown(document.activeElement!, { key: 'k' });
+    expect(document.activeElement?.textContent).toBe('One');
+    fireEvent.keyDown(document.activeElement!, { key: 't' });
+    expect(screen.getByText('One').closest('.item')!.querySelector('.due-today')).not.toBeNull();
+    expect(document.activeElement?.textContent).toBe('One');
+    fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
+    expect(screen.getByRole('dialog')).not.toBeNull();
+  });
+
+  it('deletes with Delete, keeps a place in the list, and leaves typing in a rename alone', () => {
+    seed([{ text: 'One' }, { text: 'Two' }]);
+    render(<App />);
+    const one = screen.getByText('One');
+    one.focus();
+    fireEvent.keyDown(one, { key: 'F2' });
+    fireEvent.keyDown(screen.getByLabelText('Edit task'), { key: 'p' });
+    fireEvent.keyDown(screen.getByLabelText('Edit task'), { key: 'Delete' });
+    expect(status()).toBe('');
+    fireEvent.keyDown(screen.getByLabelText('Edit task'), { key: 'Escape' });
+    expect(titles()).toEqual(['One', 'Two']); // the keys typed in the rename field did nothing to the task
+    fireEvent.keyDown(screen.getByText('One'), { key: 'Delete' });
+    expect(titles()).toEqual(['Two']);
+    expect(document.activeElement?.textContent).toBe('Two');
+    expect(screen.getByText('Task deleted')).not.toBeNull();
+  });
+
+  it('shows the shortcut beside a command in the palette', () => {
+    render(<App />);
+    fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true });
+    const option = screen.getByRole('option', { name: 'New task' });
+    expect(option.querySelector('kbd')?.textContent).toBe('N');
+  });
+});
+
 describe('App: mobile menu', () => {
   it('opens the sidebar as a dialog, traps focus, and returns focus to the menu button on Escape', () => {
     render(<App />);

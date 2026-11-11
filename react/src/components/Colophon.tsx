@@ -61,6 +61,11 @@ export default function Colophon({ accent, onAccent, onExport, onImport, modKey,
           <dt><kbd>{modKey}</kbd> <kbd>K</kbd></dt><dd>Commands</dd>
           <dt><kbd>Alt</kbd> <kbd>↑↓</kbd></dt><dd>Reorder</dd>
           <dt><kbd>F2</kbd></dt><dd>Rename</dd>
+          <dt><kbd>J</kbd> <kbd>K</kbd></dt><dd>Next, previous task</dd>
+          <dt><kbd>P</kbd></dt><dd>Change priority</dd>
+          <dt><kbd>T</kbd></dt><dd>Due today</dd>
+          <dt><kbd>Enter</kbd></dt><dd>Open details</dd>
+          <dt><kbd>Del</kbd></dt><dd>Delete</dd>
         </dl>
       </div>
     </footer>
