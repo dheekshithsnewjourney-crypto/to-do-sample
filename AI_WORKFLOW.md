@@ -135,7 +135,7 @@ The owner said the app still looked like generic AI output and asked for a full 
 
 **How the direction was chosen**
 - Impeccable's concept roll picked the direction to build from a ranked list of seven sources outside software (departure board, Swiss poster, carbon order pad, library due card, transit map, kitchen ticket rail, road signs). Catalog challengers were weighed, and the losers donated one discipline each.
-- Three directions were built as a static prototype with a switcher: A Departures (gate board), B The pass (kitchen tickets, assigned by the roll), C Grid (Swiss poster). They differ in what the user does, not only in looks. The owner chose C. The prototype and screenshots are in `prototypes/`.
+- Three directions were built as a static prototype with a switcher: A Departures (gate board), B The pass (kitchen tickets, assigned by the roll), C Grid (Swiss poster). They differ in what the user does, not only in looks. The owner chose C. Only its screenshot is kept, in `prototypes/C-grid.png`.
 - `PRODUCT.md` was written from the repo, without an interview (the owner's rules say not to ask what the repo answers). The direction contract is in `.impeccable/surfaces/`.
 
 **How it was checked**

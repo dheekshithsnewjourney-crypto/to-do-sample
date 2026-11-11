@@ -38,7 +38,7 @@ npm run contrast
 ```
 It also runs in CI, so a palette change that breaks contrast fails the build.
 
-The three directions that were considered (Departures, The pass, Grid) are kept in [`prototypes/`](./prototypes).
+The prototype screenshot of the chosen direction is in [`prototypes/C-grid.png`](./prototypes/C-grid.png).
 
 ### Motion and touch
 - Two custom curves: `--ease-out` for things that enter or leave, `--ease-drawer` for the drawer and the mobile menu. Exits are faster than entries.
