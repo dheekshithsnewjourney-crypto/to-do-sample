@@ -19,6 +19,8 @@ const PAIRS = [
   ['accent-ink', 'accent', 'primary button, high-priority pill, checkmark, active list monogram'],
   ['accent-text', 'surface', 'overdue label'],
   ['accent-text', 'bg', 'overdue label on a hovered task, overdue count'],
+  ['accent-text', 'soft', 'overdue label and High priority on a hovered row'],
+  ['accent-ink', 'accent', 'all text, placeholders and focus rings on the red field'],
   ['sun-ink', 'sun', 'medium pill, Today badge, search highlight, undo button'],
   ['danger', 'surface', 'delete button, form error'],
   ['danger', 'bg', 'delete icon on a hovered task'],

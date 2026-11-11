@@ -3,7 +3,7 @@
 :root {
   --bg: #FAFAFA; --surface: #FFFFFF; --soft: #F2F2F2; --line: #E4E4E4;
   --ink: #111111; --muted: #6B6B6B;
-  --accent: #D62839; --accent-ink: #FFFFFF; --accent-text: #D62839;
+  --accent: #D62839; --accent-ink: #FFFFFF; --accent-text: #C8202F;
   --sun: #FFC53D; --sun-ink: #111111;
   --danger: #A4161A; --danger-ink: #FFFFFF;
   --display: "Bricolage Grotesque", Inter, system-ui, sans-serif;

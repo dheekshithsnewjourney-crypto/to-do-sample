@@ -14,6 +14,8 @@ interface Props {
   onOpen: (id: string) => void;
   onMove: (from: string, to: string) => void;
   onNudge: (id: string, dir: -1 | 1) => void;
+  when?: string;   // the "when" rail label (Overdue, Today, Thu 13 Nov…), shown on the first row of each run
+  first?: boolean; // first row of a run: the rail label shows and a heavy rule opens the group
 }
 
 const PRIORITY_LABEL = { low: 'Low', med: 'Medium', high: 'High' } as const;
@@ -29,7 +31,7 @@ function Highlight({ text, query }: { text: string; query?: string }) {
   return <>{parts.map((part, i) => (i % 2 ? <mark key={i}>{part}</mark> : part))}</>;
 }
 
-export default function TaskItem({ task, list, query, draggable, onToggle, onDelete, onEdit, onOpen, onMove, onNudge }: Props) {
+export default function TaskItem({ task, list, query, draggable, onToggle, onDelete, onEdit, onOpen, onMove, onNudge, when, first }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const [over, setOver] = useState(false);
@@ -82,7 +84,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
   return (
     <li
       data-id={task.id}
-      className={`item${task.done ? ' done' : ''}${over ? ' over' : ''}${draggable ? ' drag' : ''}${dragging ? ' dragging' : ''}`}
+      className={`item${task.done ? ' done' : ''}${first ? ' first' : ''}${over ? ' over' : ''}${draggable ? ' drag' : ''}${dragging ? ' dragging' : ''}`}
       draggable={draggable && !editing}
       onKeyDown={onRowKey}
       onDragStart={(e) => {
@@ -115,6 +117,8 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
         if (from && from !== task.id) onMove(from, task.id);
       }}
     >
+      {/* The rail repeats the due information that the meta row already gives screen readers. */}
+      <span className="when" aria-hidden="true">{first ? when : ''}</span>
       <input
         className="check"
         type="checkbox"
@@ -124,7 +128,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
       />
       <div className="body">
         {editing ? (
-          <input className="edit" type="text" autoFocus maxLength={120} value={draft} aria-label="Edit task"
+          <input className="edit" type="text" dir="auto" autoFocus maxLength={120} value={draft} aria-label="Edit task"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') finish(true, true);
@@ -132,7 +136,7 @@ export default function TaskItem({ task, list, query, draggable, onToggle, onDel
             }}
             onBlur={() => finish(true)} />
         ) : (
-          <span ref={textRef} className="text" tabIndex={0} title="Double-click or press F2 to rename" aria-keyshortcuts="F2" onDoubleClick={startEdit}>
+          <span ref={textRef} className="text" dir="auto" tabIndex={0} title="Double-click or press F2 to rename" aria-keyshortcuts="F2" onDoubleClick={startEdit}>
             <Highlight text={task.text} query={query} />
           </span>
         )}

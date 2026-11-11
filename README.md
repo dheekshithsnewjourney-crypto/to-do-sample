@@ -23,27 +23,13 @@ A clean, accessible to-do app built twice to show range:
 - **Accessible:** focus-trapped dialogs that restore focus on close, labelled controls, a single status region for announcements, visible focus, and reduced-motion support
 
 ## Design
-Red and yellow are the brand colours. Everything else is an untinted grey, so they are the only colour in the interface.
+The day as a Swiss International Style poster. A red field at the top states how many tasks remain, at poster scale, next to the date. Below it, a 12-column typographic sheet lists the tasks by when they are due. Full rules and tokens: [DESIGN.md](./DESIGN.md).
 
-| Token | Light | Dark | Used for |
-|---|---|---|---|
-| `--bg` | `#FAFAFA` | `#0A0A0A` | Page |
-| `--surface` | `#FFFFFF` | `#151515` | Cards, drawer |
-| `--soft` | `#F2F2F2` | `#1F1F1F` | Inputs, badges |
-| `--line` | `#E4E4E4` | `#2C2C2C` | Borders |
-| `--ink` | `#111111` | `#F5F5F5` | Text |
-| `--muted` | `#6B6B6B` | `#A3A3A3` | Secondary text |
-| `--accent` / `--accent-ink` | `#D62839` / `#FFFFFF` | `#FF4D5E` / `#0A0A0A` | Brand red: primary button, checkmark, High priority |
-| `--sun` / `--sun-ink` | `#FFC53D` / `#111111` | `#FFD166` / `#111111` | Brand yellow, always a fill with dark text on top |
-| `--danger` / `--danger-ink` | `#A4161A` / `#FFFFFF` | `#FF6B6B` / `#0A0A0A` | Delete actions, always with an icon or label |
-
-Because red is the brand, it never means "danger" by colour alone:
-- **Priority** is a labelled pill: High is solid red, Medium is yellow, Low is an outlined grey.
-- **Overdue** is red text with an icon and the words ("3 days overdue").
-- **Delete** uses a deeper crimson and always has an icon or label.
-- **Yellow** marks "today" and highlights: the Today badge, search matches, the focused task's left edge, and the progress ring when everything is done.
-
-Headings use Bricolage Grotesque, body text uses Inter. Backgrounds are flat, with no gradients.
+- **Brand:** red `#D62839` (the field) and yellow `#FFC53D` (a marker only), on white and off-black.
+- **Type:** one family, Hanken Grotesk, from 300 to 900. Every number uses tabular figures.
+- **Layout:** no sidebar and no cards. 3px ink rules open each group, and hairlines separate rows. A "when" rail (Overdue, Today, Tomorrow, a date, Done) labels each run of tasks. On phones the views and lists move into a slide-out menu.
+- **Signature:** the count re-sets with a short roll when it changes, and a finished task gets a red strike, line by line.
+- **Red text** uses a text-safe red (`#C8202F`), so it reaches 4.5:1 even on the hover grey. Red never means danger by colour alone: overdue tasks also get an icon and words.
 
 Every text/background pair is checked against WCAG AA (4.5:1) by a script that reads the tokens straight from both stylesheets:
 ```bash
@@ -51,6 +37,8 @@ cd react
 npm run contrast
 ```
 It also runs in CI, so a palette change that breaks contrast fails the build.
+
+The three directions that were considered (Departures, The pass, Grid) are kept in [`prototypes/`](./prototypes).
 
 ### Motion and touch
 - Two custom curves: `--ease-out` for things that enter or leave, `--ease-drawer` for the drawer and the mobile menu. Exits are faster than entries.
@@ -60,7 +48,7 @@ It also runs in CI, so a palette change that breaks contrast fails the build.
 - With "reduce motion" turned on, nothing moves. Fades and colour changes stay, so feedback is not lost.
 
 ## Deploy and rollback
-- CI runs on every push and pull request: dependency audit, tests, contrast check, type-check and build.
+- CI runs on every push and pull request: dependency audit, tests, contrast check, type-check, build, and a CSP check of the built page.
 - Only a push to `main` deploys to GitHub Pages. Branch runs never deploy.
 - The production build adds a Content Security Policy. GitHub Pages cannot send headers, so it is a meta tag. Each inline script is allowed by its hash, which the build computes.
 
@@ -80,9 +68,10 @@ Needs Node 22.12 or newer (CI uses Node 26 LTS).
 cd react
 npm install
 npm run dev        # development server
-npm test           # unit and DOM tests (143)
+npm test           # unit and DOM tests (145)
 npm run contrast   # WCAG AA check of the colour tokens
 npm run build      # type-check + production build
+npm run csp        # checks the built page's Content Security Policy
 ```
 The vanilla version needs no setup: open `vanilla/index.html`.
 

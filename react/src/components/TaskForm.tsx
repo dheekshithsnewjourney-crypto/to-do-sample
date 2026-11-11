@@ -31,6 +31,7 @@ export default function TaskForm({ onAdd }: Props) {
       <input
         id="new-task"
         className="title"
+        dir="auto"
         type="text"
         placeholder='Try "Pay rent tomorrow !high"'
         maxLength={120}

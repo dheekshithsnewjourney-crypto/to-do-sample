@@ -130,6 +130,49 @@ A third pass, run after design rulebooks were installed: Emil Kowalski (emil-des
 - The completion "cheer" on the progress ring keeps its overshoot. It happens rarely, and a rare celebration may have some delight.
 - The vanilla version is a separate, no-build reference app. This pass changed only the React app that is deployed.
 
+## Redesign: "Grid" (Claude Opus 5.5)
+The owner said the app still looked like generic AI output and asked for a full redesign. Only the brand colours were kept; type, layout and signature all changed.
+
+**How the direction was chosen**
+- Impeccable's concept roll picked the direction to build from a ranked list of seven sources outside software (departure board, Swiss poster, carbon order pad, library due card, transit map, kitchen ticket rail, road signs). Catalog challengers were weighed, and the losers donated one discipline each.
+- Three directions were built as a static prototype with a switcher: A Departures (gate board), B The pass (kitchen tickets, assigned by the roll), C Grid (Swiss poster). They differ in what the user does, not only in looks. The owner chose C. The prototype and screenshots are in `prototypes/`.
+- `PRODUCT.md` was written from the repo, without an interview (the owner's rules say not to ask what the repo answers). The direction contract is in `.impeccable/surfaces/`.
+
+**How it was checked**
+- Four parallel read-only auditors (motion, accessibility, platform and copy, and a fresh finish reviewer) read their design skills and reviewed the code and screenshots. Every finding was checked against the code before it was applied. Rejected findings are listed below with reasons.
+- Screenshots at 375px and 1280px, light and dark, with realistic and worst-case data, plus 320px, 200% text zoom, a single task, and 1,000 tasks.
+- The finish reviewer scored the fix batch and returned "ship".
+
+**What the checks found and fixed (beyond the redesign itself)**
+
+| Problem | Fix |
+|---|---|
+| The CSP hash did not match on a Windows (CRLF) checkout, so the browser blocked the theme script | The build hashes text with normalised line endings, and a new `npm run csp` step checks the built page in CI |
+| Search typing took 700–1,160ms per key with 300 tasks on a 4x slower CPU | Reused date formatters (each `toLocaleDateString` built a new one) and `useDeferredValue` for the filter: about 200ms on the same throttled CPU |
+| Red text on the hover grey was 4.44:1 | Text-safe red `#C8202F`; the pair is now in the contrast script |
+| Focus rings in the phone menu were white on white | The menu uses ink focus rings |
+| A 3-digit count was cut off on phones | The numeral shrinks for 3 and 4 digits |
+| Reordering needed dragging or a keyboard (WCAG 2.5.7) | Move up and Move down buttons in the drawer |
+| Hidden row actions on touch screens wider than 820px | Always visible when the device has no hover |
+| The palette backdrop faded although the palette must not animate | No animation on either |
+| A strike drawn with a positioned bar crossed wrapped titles once, in the middle | A per-line background stripe |
+| The date split mid-word at 320px; a long list name overlapped "New list" at 200% zoom | `break-word` and a smaller date on phones; list names shorten with an ellipsis |
+| No theme-color, safe-area or share metadata; the title named the tech stack | Added, with a rendered 1200×630 share image |
+| The colophon said "nothing leaves your device", but Google Fonts is requested | Copy now says "Nothing is uploaded unless you export it" |
+
+**Tests changed after they were written, and why**
+- The two drawer tests in `components.test.tsx` gained `onMove={noop}`, because the drawer has a new required prop. No assertion changed.
+- "returns focus to the element that opened it" failed about 1 run in 5 under full-suite load. Focus returns in the dialog's effect cleanup, which React runs after the dialog leaves the page. The test checked focus between those two steps. The same assertion now sits inside the `waitFor`. Six full runs after the change: 145/145 each time.
+- New tests: the "when" rail labels, and moving a task from the drawer with focus kept inside it.
+
+**Findings rejected, with reasons**
+- Overdue always first in "My order": the user's manual order is the point of that sort.
+- Meta in fixed right-hand columns: 1 to 6 items of mixed length would be cut off.
+- Date and priority on one phone row: that layout cut off "Medium priority" at 375px.
+- Two-line clamp on long titles: titles identify a task, so they wrap in full.
+- `role="button"` on the task title: it is a rename target (F2, double-click), and the drawer also edits it.
+- A dimmer placeholder on the red field: white at 80% falls under 4.5:1; weight (400 vs 600) marks the empty state instead.
+
 ## Takeaways
 - Diagnose first, then fix: I list what's wrong before asking the AI to change anything.
 - A passing test means nothing if the AI weakened the assertion to get it green, so I read the diffs.

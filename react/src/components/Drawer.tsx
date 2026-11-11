@@ -12,11 +12,12 @@ interface Props {
   onToggleSub: (subId: string) => void;
   onDeleteSub: (subId: string) => void;
   onDelete: () => void;
+  onMove: (dir: -1 | 1) => void; // a tap alternative to dragging (WCAG 2.5.7)
 }
 
 const CLOSE_MS = 180; // matches the .closing animation in index.css
 
-export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onToggleSub, onDeleteSub, onDelete }: Props) {
+export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onToggleSub, onDeleteSub, onDelete, onMove }: Props) {
   const [title, setTitle] = useState(task.text);
   const [sub, setSub] = useState('');
   const [closing, setClosing] = useState(false);
@@ -61,7 +62,7 @@ export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onTog
         </div>
 
         <label htmlFor="d-title">Title</label>
-        <input id="d-title" type="text" maxLength={120} value={title}
+        <input id="d-title" type="text" dir="auto" maxLength={120} value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') commitTitle(); }}
           onBlur={commitTitle} />
@@ -105,7 +106,7 @@ export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onTog
           {subs.map((s) => (
             <li key={s.id} className={s.done ? 'done' : ''}>
               <input className="check small" type="checkbox" checked={s.done} onChange={() => onToggleSub(s.id)} aria-label={`Mark "${s.text}" as ${s.done ? 'not done' : 'done'}`} />
-              <span>{s.text}</span>
+              <span dir="auto">{s.text}</span>
               <button type="button" className="x" aria-label={`Delete subtask "${s.text}"`} onClick={() => onDeleteSub(s.id)}><CloseIcon size={15} /></button>
             </li>
           ))}
@@ -114,6 +115,12 @@ export default function Drawer({ task, lists, onClose, onUpdate, onAddSub, onTog
           <label className="sr-only" htmlFor="d-sub">New subtask</label>
           <input id="d-sub" type="text" placeholder="Add a subtask and press Enter" maxLength={100} value={sub} onChange={(e) => setSub(e.target.value)} />
         </form>
+
+        <p className="label" id="d-order">Position</p>
+        <div className="order" role="group" aria-labelledby="d-order">
+          <button type="button" className="move" onClick={() => onMove(-1)}>Move up</button>
+          <button type="button" className="move" onClick={() => onMove(1)}>Move down</button>
+        </div>
 
         <button type="button" className="danger" onClick={onDelete}><TrashIcon size={16} />Delete task</button>
       </aside>
