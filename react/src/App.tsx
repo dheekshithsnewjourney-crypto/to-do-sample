@@ -25,7 +25,6 @@ const THEME_KEY = 'todo-theme';
 const ACCENT_KEY = 'todo-accent';
 const RANK = { high: 0, med: 1, low: 2 } as const;
 const LIST_COLORS = ['#D62839', '#FFC53D', '#8A8A8A'];
-const DATE_LONG: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 const VIEW_TITLES: Record<string, string> = { all: 'All tasks', today: 'Today', upcoming: 'Upcoming', overdue: 'Overdue' };
 const MOD_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
@@ -42,7 +41,7 @@ export default function App() {
   const [tasks, dispatch] = useReducer(tasksReducer, lists, loadTasks);
   const [view, setView] = useState<View>('all');
   const [filter, setFilter] = useState<Filter>('all');
-  const [sort, setSort] = useState<Sort>('manual');
+  const [sort, setSort] = useState<Sort>('due'); // the sheet lists tasks by day; "My order" is one choice away
   const [query, setQuery] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -145,7 +144,9 @@ export default function App() {
       if (filter === 'done' && !t.done) return false;
       return !q || t.text.toLowerCase().includes(q);
     });
-    if (sort === 'due') list = [...list].sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
+    // By day: overdue first, then each day in order, then undated tasks, with finished tasks at the end.
+    const dayKey = (t: Task) => (t.done ? 'z' : t.dueDate ?? '9999');
+    if (sort === 'due') list = [...list].sort((a, b) => dayKey(a).localeCompare(dayKey(b)));
     if (sort === 'priority') list = [...list].sort((a, b) => RANK[a.priority] - RANK[b.priority]);
     return list;
   }, [scoped, filter, sort, deferredQuery]);
@@ -278,8 +279,20 @@ export default function App() {
   // Updated after paint, so the next render can tell whether the numeral changed.
   useEffect(() => { lastCount.current = remaining; });
   const allDone = tasks.length > 0 && allActive === 0;
-  const dateLong = parseISO(today)?.toLocaleDateString(undefined, DATE_LONG) ?? '';
   const whens = useMemo(() => visible.map((t) => whenLabel(t, today)), [visible, today]);
+  const now = parseISO(today);
+  const weekday = now?.toLocaleDateString(undefined, { weekday: 'long' }) ?? '';
+  const dayMonth = now?.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) ?? '';
+  // How many rows each run of the "when" rail has, keyed by the index of its first row.
+  const runCounts = useMemo(() => {
+    const map = new Map<number, number>();
+    let start = 0;
+    whens.forEach((w, i) => {
+      if (i === 0 || whens[i - 1] !== w) start = i;
+      map.set(start, (map.get(start) ?? 0) + 1);
+    });
+    return map;
+  }, [whens]);
 
   return (
     <div className="poster">
@@ -309,7 +322,7 @@ export default function App() {
             <span key={remaining} className={rolled ? 'roll' : undefined}>{remaining}</span>
           </p>
           <div className="head">
-            <h1><span className="sr-only">Tasks, </span>{dateLong}</h1>
+            <h1><span className="sr-only">Tasks, </span>{weekday}<br />{dayMonth}</h1>
             <p className="sub">
               {hello}.{' '}
               {tasks.length === 0 ? 'Add a task to get started.'
@@ -323,6 +336,7 @@ export default function App() {
 
       <main className="sheet" inert={menu}>
         <section className="panel" aria-labelledby="view-title">
+          <div className="sheet-head">
           <div className="panel-head">
             <h2 className="view-title" id="view-title">{viewTitle}</h2>
             <span className={`badge${view === 'today' && viewCounts.today > 0 ? ' sun' : ''}`}>
@@ -331,6 +345,7 @@ export default function App() {
           </div>
           <Filters filter={filter} counts={counts} onFilter={setFilter} query={query} onQuery={setQuery}
             sort={sort} onSort={setSort} searchRef={searchRef} />
+          </div>
           <ul className="list" ref={listRef}>
             {visible.map((t, i) => {
               const when = whens[i];
@@ -341,6 +356,7 @@ export default function App() {
                   task={t}
                   when={when}
                   first={first}
+                  whenCount={first ? count(runCounts.get(i) ?? 1, 'task') : undefined}
                   list={currentListId ? undefined : lists.find((l) => l.id === t.listId)}
                   query={deferredQuery}
                   draggable={canDrag}
@@ -381,6 +397,7 @@ export default function App() {
           onDeleteSub={(subId) => dispatch({ type: 'deleteSub', taskId: openTask.id, subId })}
           onDelete={() => handleDelete(openTask.id)}
           onMove={(dir) => nudge(openTask.id, dir, false)}
+          canMove={canDrag}
         />
       )}
       {undo && <Toast key={undo.id} message={undo.message} onUndo={handleUndo} onDismiss={() => setUndo(null)} />}

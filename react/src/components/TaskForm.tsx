@@ -26,7 +26,7 @@ export default function TaskForm({ onAdd }: Props) {
   }
 
   return (
-    <form className="composer" onSubmit={submit} autoComplete="off">
+    <form className={`composer${text || due || priority !== 'med' ? ' filled' : ''}`} onSubmit={submit} autoComplete="off">
       <label className="sr-only" htmlFor="new-task">New task</label>
       <input
         id="new-task"

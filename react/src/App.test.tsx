@@ -10,6 +10,8 @@ const seed = (tasks: Partial<Task>[]) =>
 const titles = () => [...document.querySelectorAll('.list .text')].map((n) => n.textContent);
 const status = () => document.querySelector('[role=status].sr-only')?.textContent ?? '';
 const viewButton = (name: RegExp) => within(screen.getByRole('navigation', { name: 'Views' })).getByRole('button', { name });
+// The sheet opens sorted by day. Tests about manual order pick "My order" first, as a user would.
+const useMyOrder = () => fireEvent.change(screen.getByLabelText('Sort tasks'), { target: { value: 'manual' } });
 const addTask = (text: string) => {
   fireEvent.change(screen.getByLabelText('New task'), { target: { value: text } });
   fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
@@ -94,6 +96,7 @@ describe('App: undo', () => {
   it('lets "Clear completed" be undone, restoring tasks to their old places', () => {
     seed([{ text: 'One', done: true }, { text: 'Two' }, { text: 'Three', done: true }]);
     render(<App />);
+    useMyOrder();
     fireEvent.click(screen.getByRole('button', { name: 'Clear completed' }));
     expect(titles()).toEqual(['Two']);
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -139,6 +142,7 @@ describe('App: keyboard', () => {
   it('moves a task from the drawer without dragging, and keeps focus in the drawer', () => {
     seed([{ text: 'One' }, { text: 'Two' }, { text: 'Three' }]);
     render(<App />);
+    useMyOrder();
     fireEvent.click(screen.getByLabelText('Open details for "One"'));
     const down = screen.getByRole('button', { name: 'Move down' });
     down.focus();
@@ -153,6 +157,7 @@ describe('App: keyboard', () => {
   it('keeps focus on a task while Alt+Arrow moves it, and announces the move', () => {
     seed([{ text: 'One' }, { text: 'Two' }, { text: 'Three' }]);
     render(<App />);
+    useMyOrder();
     const one = screen.getByText('One');
     one.focus();
     fireEvent.keyDown(one, { key: 'ArrowDown', altKey: true });
@@ -179,6 +184,7 @@ describe('App: keyboard', () => {
   it('reorders by drag and drop and by keyboard through the same path', () => {
     seed([{ text: 'One' }, { text: 'Two' }, { text: 'Three' }]);
     render(<App />);
+    useMyOrder();
     const rows = () => [...document.querySelectorAll<HTMLElement>('.list .item')];
     const data: Record<string, string> = {};
     const dataTransfer = { types: ['application/x-task'], setData: (t: string, v: string) => { data[t] = v; }, getData: (t: string) => data[t] ?? '', effectAllowed: '', dropEffect: '' };
@@ -218,6 +224,34 @@ describe('App: date rollover', () => {
     act(() => { vi.advanceTimersByTime(60_000); });
     expect(document.querySelector('.item .overdue')?.textContent).toBe('Due yesterday');
     expect(viewButton(/^Overdue/).textContent).toBe('Overdue1');
+  });
+});
+
+describe('App: sheet order', () => {
+  it('opens sorted by day: overdue first, then each day, undated tasks, and finished tasks last', () => {
+    seed([
+      { text: 'Done long ago', done: true, dueDate: '2026-01-01' },
+      { text: 'No date' },
+      { text: 'Next week', dueDate: '2026-11-17' },
+      { text: 'Today', dueDate: '2026-11-10' },
+      { text: 'Late', dueDate: '2026-11-03' },
+    ]);
+    render(<App />);
+    expect((screen.getByLabelText('Sort tasks') as HTMLSelectElement).value).toBe('due');
+    expect(titles()).toEqual(['Late', 'Today', 'Next week', 'No date', 'Done long ago']);
+    // Each run of the rail shows its label once, with the number of rows in the run
+    const rails = [...document.querySelectorAll('.list .when')].map((n) => n.textContent);
+    expect(rails[0]).toBe('Overdue1 task');
+    expect(rails[1]).toBe('Today1 task');
+    expect(rails[4]).toBe('Done1 task');
+  });
+
+  it('disables Move up and Move down in the drawer unless the sort is "My order"', () => {
+    seed([{ text: 'One' }, { text: 'Two' }]);
+    render(<App />);
+    fireEvent.click(screen.getByLabelText('Open details for "One"'));
+    expect((screen.getByRole('button', { name: 'Move down' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Set the sort to "My order"/)).not.toBeNull();
   });
 });
 

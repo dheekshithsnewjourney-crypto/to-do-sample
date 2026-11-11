@@ -160,6 +160,15 @@ The owner said the app still looked like generic AI output and asked for a full 
 | No theme-color, safe-area or share metadata; the title named the tech stack | Added, with a rendered 1200×630 share image |
 | The colophon said "nothing leaves your device", but Google Fonts is requested | Copy now says "Nothing is uploaded unless you export it" |
 
+**Correction after the first release of Grid**
+The owner said the first build looked worse than the prototype they chose. They were right: the build had drifted from it, and the finish reviewer had flagged the same points (crowded top line, stacked meta, Overdue not first), which I had rejected. The second pass matches the prototype:
+- The sheet opens sorted **by day** (Overdue first, finished last). "My order" is still there, one choice away. Four tests about manual order now select "My order" first; their assertions are unchanged. Two new tests cover the default order and the disabled Move buttons.
+- The top line is type only; lists open from a "Lists" button. The date is on two lines. Quick-add is one line under one rule.
+- Each group label shows its task count. Title, details and priority are aligned columns. Hairlines start at the task column.
+- The phone menu button no longer shows on desktop (a bug from the first build).
+- This time the owner saw a side-by-side of the prototype and the build before the deploy.
+- A second test ("locks page scrolling while open and releases it afterwards") had the same timing race as the focus test: it checked the lock between the dialog leaving the page and its cleanup. The same assertion now sits inside the `waitFor`. Six full runs: 147/147 each time.
+
 **Tests changed after they were written, and why**
 - The two drawer tests in `components.test.tsx` gained `onMove={noop}`, because the drawer has a new required prop. No assertion changed.
 - "returns focus to the element that opened it" failed about 1 run in 5 under full-suite load. Focus returns in the dialog's effect cleanup, which React runs after the dialog leaves the page. The test checked focus between those two steps. The same assertion now sits inside the `waitFor`. Six full runs after the change: 145/145 each time.

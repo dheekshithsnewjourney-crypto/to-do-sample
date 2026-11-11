@@ -24,6 +24,9 @@ interface Props {
 
 export default function Sidebar({ view, onView, counts, lists, onAddList, onDeleteList, open, onClose }: Props) {
   const [name, setName] = useState('');
+  // Wide screens keep the top line short: lists open from a "Lists" button, and stay open while one is in view.
+  const [listsOpen, setListsOpen] = useState(false);
+  const showLists = listsOpen || view.startsWith('list:');
   const ref = useRef<HTMLElement>(null);
   useDialog(ref, open, onClose); // focus trap, Escape and focus restore while it is a drawer
 
@@ -55,6 +58,12 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
           })}
         </nav>
 
+        <button type="button" className="lists-toggle" aria-expanded={showLists} aria-controls="lists-panel"
+          onClick={() => setListsOpen(!showLists)}>
+          Lists <span className="n">{lists.length}</span>
+        </button>
+
+        <div id="lists-panel" className={`lists${showLists ? ' show' : ''}`}>
         <p className="side-title" id="lists-title">Lists</p>
         <nav className="views" aria-labelledby="lists-title">
           {lists.map((l) => {
@@ -82,6 +91,7 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
           <input id="new-list" type="text" placeholder="New list" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
           <button type="submit" aria-label="Add list"><PlusIcon size={16} /></button>
         </form>
+        </div>
 
       </aside>
     </>

@@ -67,24 +67,29 @@ p, .text { text-wrap: pretty; }
 .field input { caret-color: var(--accent-ink); }
 .bar, .masthead { max-width: var(--max); margin-inline: auto; }
 .bar { display: flex; align-items: flex-start; gap: var(--s5); padding-top: var(--s4); }
-.brand-sm, .menu-btn { display: none; }
+.brand-sm, .bar > .menu-btn { display: none; } /* phone only */
 .icon-btn, .cmd { flex: none; display: grid; place-items: center; height: 40px; background: none; border: 1.5px solid currentColor; border-radius: 2px; color: inherit; }
+.bar > .icon-btn, .bar > .cmd { border-color: transparent; } /* the top line is type only, as on the poster */
 .icon-btn { width: 40px; }
 .cmd { display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); font-weight: 600; font-size: .9375rem; }
 
 /* The view index: on wide screens the sidebar component becomes the poster's top lines. */
-.side { flex: 1; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--s6); row-gap: var(--s1); align-items: baseline; }
+.side { flex: 1; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--s5); align-items: baseline; }
 .side-head { grid-column: 1; }
 .side-head .icon-btn { display: none; }
 .brand { margin: 0; font: 900 1.375rem/40px var(--font); letter-spacing: -.03em; }
 .brand-mark { display: none; }
-.side .views:first-of-type { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 0 var(--s5); }
-.side-title { grid-column: 1; margin: 0; font-size: .875rem; font-weight: 600; }
-.side .views:last-of-type { grid-column: 2; display: flex; flex-wrap: wrap; gap: 0 var(--s4); }
-.views button { display: inline-flex; align-items: baseline; gap: var(--s2); min-height: 40px; padding: 0; background: none; border: 0; border-bottom: 2px solid transparent; color: inherit; font-weight: 600; text-align: left; border-radius: 0; }
-.side .views:first-of-type button { font-size: 1.0625rem; }
-.side .views:last-of-type button { font-size: .9375rem; align-items: center; }
-.views button.on { border-bottom-color: currentColor; }
+.side > .views { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--s5); }
+.lists-toggle { grid-column: 3; }
+/* Lists open as a second line, from the "Lists" button */
+.lists { grid-column: 1 / -1; display: none; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0 var(--s5); }
+.lists.show { display: flex; }
+.lists .side-title { display: none; }
+.lists .views { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--s4); min-width: 0; }
+.views button, .lists-toggle { display: inline-flex; align-items: baseline; gap: var(--s2); min-height: 40px; padding: 0; background: none; border: 0; border-bottom: 2px solid transparent; color: inherit; font-weight: 600; text-align: left; border-radius: 0; }
+.side > .views button, .lists-toggle { font-size: 1.0625rem; }
+.lists .views button { font-size: .9375rem; align-items: center; }
+.views button.on, .lists-toggle[aria-expanded='true'] { border-bottom-color: currentColor; }
 .views .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; }
 .views .n { font-size: .8125rem; font-weight: 600; }
 .views .n.sun { background: var(--sun); color: var(--sun-ink); padding: 0 .35rem; font-weight: 800; }
@@ -95,14 +100,14 @@ p, .text { text-wrap: pretty; }
 .list-row > button:first-child { padding-right: 0; }
 .list-row .x { position: absolute; right: -10px; top: 0; width: 40px; min-height: 40px; justify-content: center; border: 0; opacity: 0; }
 .list-row:hover .x, .list-row .x:focus-visible { opacity: 1; }
-.new-list { grid-column: 3; display: flex; align-items: center; gap: var(--s1); }
+.new-list { display: flex; align-items: center; gap: var(--s1); }
 .new-list input { width: 8.5rem; min-height: 32px; background: none; border: 0; border-bottom: 1.5px solid currentColor; border-radius: 0; padding: 0 2px; font-size: .9375rem; font-weight: 600; }
 .new-list input::placeholder { color: inherit; font-weight: 400; opacity: 1; }
 .new-list button { flex: none; width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; color: inherit; }
 .scrim { display: none; }
 
 /* The numeral and the date */
-.masthead { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); align-items: end; margin-top: var(--s8); }
+.masthead { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); align-items: start; margin-top: var(--s6); } /* numeral and date hang from the same top line */
 .count { grid-column: 1 / 5; margin: 0; overflow: hidden; font: 900 clamp(7.5rem, 15vw, 13.5rem)/.8 var(--font); letter-spacing: -.04em; padding-bottom: .04em; }
 .count span { display: inline-block; }
 .count[data-len='3'] { font-size: clamp(5.5rem, 10.5vw, 9.5rem); }
@@ -111,30 +116,32 @@ p, .text { text-wrap: pretty; }
 @keyframes roll { from { transform: translateY(.18em); opacity: 0; } }
 .count.complete span { background: var(--sun); color: var(--sun-ink); padding: 0 .06em; }
 .head { grid-column: 5 / 13; min-width: 0; }
-h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-spacing: -.035em; overflow-wrap: break-word; } /* break-word, not anywhere: never split a weekday mid-word */
+h1 { margin: 0; font: 800 clamp(2.5rem, 4.6vw, 4rem)/.98 var(--font); letter-spacing: -.035em; overflow-wrap: break-word; } /* break-word, not anywhere: never split a weekday mid-word */
 .sub { margin: var(--s3) 0 0; font-size: 1.1875rem; font-weight: 300; }
 .sub strong { background: var(--sun); color: var(--sun-ink); font-weight: 800; padding: 0 .3em; }
 
 /* Quick-add, set on the field */
-.composer { margin-top: var(--s5); }
-.composer .title { width: 100%; min-height: 52px; background: none; border: 0; border-bottom: var(--rule) solid currentColor; border-radius: 0; padding: var(--s2) 0; font-size: 1.3125rem; font-weight: 600; }
+/* One line, as on the poster: the task, then date and priority as quiet cells, then Add. One rule under all of it. */
+.composer { margin-top: var(--s5); display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.composer .title, .composer .row { border-bottom: var(--rule) solid currentColor; }
+.composer .title { width: 100%; min-height: 56px; background: none; border-width: 0 0 var(--rule); border-radius: 0; padding: var(--s2) 0; font-size: 1.3125rem; font-weight: 600; }
 .composer .title::placeholder { color: inherit; font-weight: 400; opacity: 1; }
-.composer .title:focus { border-bottom-width: 5px; padding-bottom: 6px; }
-.row { display: flex; flex-wrap: wrap; gap: var(--s3); padding-top: var(--s3); }
-.row input, .row select { height: 44px; min-width: 0; background: none; border: 1.5px solid currentColor; border-radius: 2px; padding: 0 var(--s3); font-size: .9375rem; font-weight: 600; color-scheme: dark; }
+.row { display: flex; align-items: center; }
+.row input, .row select { height: 36px; min-width: 0; background: none; border: 0; border-left: 1px solid color-mix(in srgb, currentColor 50%, transparent); border-radius: 0; padding: 0 var(--s3); font-size: .9375rem; font-weight: 600; color-scheme: dark; }
 .row select option { color: var(--ink); background: var(--surface); }
-.primary { margin-left: auto; height: 44px; padding: 0 var(--s5); background: var(--accent-ink); color: var(--accent); border: 0; border-radius: 2px; font-weight: 800; font-size: 1rem; }
-.error { display: inline-flex; align-items: center; gap: var(--s2); margin: var(--s3) 0 0; padding: var(--s1) var(--s2); background: var(--sun); color: var(--sun-ink); font-size: .9375rem; font-weight: 600; }
+.primary { margin-left: var(--s3); height: 40px; padding: 0 var(--s5); background: var(--accent-ink); color: var(--accent); border: 0; border-radius: 2px; font-weight: 800; font-size: 1rem; }
+.error { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: var(--s2); margin: var(--s3) 0 0; padding: var(--s1) var(--s2); background: var(--sun); color: var(--sun-ink); font-size: .9375rem; font-weight: 600; }
 
 /* ==== the sheet ==== */
 .sheet { flex: 1; padding: var(--s7) max(var(--margin), env(safe-area-inset-right)) var(--s8) max(var(--margin), env(safe-area-inset-left)); }
 .panel { max-width: var(--max); margin: 0 auto; }
-.panel-head { display: flex; align-items: baseline; gap: var(--s3); }
+.sheet-head { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); column-gap: var(--s4); align-items: end; padding-bottom: var(--s4); }
+.panel-head { display: flex; align-items: baseline; gap: var(--s3); min-width: 0; }
 .view-title { margin: 0; min-width: 0; font: 800 2rem/1.1 var(--font); letter-spacing: -.03em; overflow-wrap: anywhere; }
 .badge { flex: none; padding: 0 var(--s2); border: 1.5px solid var(--ink); font-size: .875rem; font-weight: 700; line-height: 1.6; }
 .badge.sun { background: var(--sun); color: var(--sun-ink); border-color: var(--sun); }
 
-.toolbar { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); justify-content: space-between; align-items: end; padding: var(--s4) 0 var(--s5); }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); justify-content: space-between; align-items: end; }
 .tabs { display: flex; gap: var(--s5); }
 .tabs button { position: relative; min-width: 44px; min-height: 40px; padding: 0; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
@@ -146,12 +153,15 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
 /* Rows: [when rail · 3 cols][check][title + meta][open][delete] */
 .list { list-style: none; margin: 0; padding: 0; }
 .item { display: grid; grid-template-columns: var(--rail) 24px minmax(0, 1fr) auto auto; column-gap: var(--s4); align-items: start; padding: var(--s3) 0 var(--s3); border-top: 1px solid var(--line); transition: background-color .15s, opacity .15s; }
+/* Inside a group the hairline starts at the task column; the rail stays clear, as on the poster. */
+.item:not(.first) { border-top: 0; background-image: linear-gradient(var(--line), var(--line)); background-repeat: no-repeat; background-position: right top; background-size: calc(100% - var(--rail) - var(--s4)) 1px; }
 .item.first { border-top: var(--rule) solid var(--ink); padding-top: var(--s3); }
 .item:focus-within { background: var(--focus-tint); }
 .item.drag { cursor: grab; }
 .item.dragging { opacity: .4; }
 .item.over { border-top: var(--rule) solid var(--accent); } /* drop target: the row's own rule turns red */
-.when { padding-right: var(--s4); font-weight: 800; font-size: 1.0625rem; line-height: 1.6; letter-spacing: -.01em; }
+.when { padding-right: var(--s4); font-weight: 800; font-size: 1.25rem; line-height: 1.35; letter-spacing: -.02em; }
+.when small { display: block; margin-top: 2px; font-size: .875rem; font-weight: 400; letter-spacing: 0; color: var(--muted); }
 
 /* The check: an ink ring; done fills it, and a red bar strikes the title. */
 .check { position: relative; appearance: none; width: 22px; height: 22px; margin: 3px 0 0; border: 2px solid var(--ink); border-radius: 50%; display: grid; place-items: center; cursor: pointer; transition: background-color .15s, border-color .15s, transform 160ms var(--ease-out); }
@@ -163,12 +173,16 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
 .check.small::before { inset: -10px; }
 .check.small:checked::after { width: 5px; height: 9px; border-width: 0 2px 2px 0; }
 
-.body { min-width: 0; }
+/* The body holds title · meta · priority as three aligned columns */
+.body { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 15rem) 4.5rem; column-gap: var(--s4); align-items: baseline; }
+.title { min-width: 0; }
+.body .meta { grid-column: 2; grid-row: 1; }
+.body .prio { grid-column: 3; grid-row: 1; justify-self: end; }
 /* The strike is a background stripe on the inline title, so a wrapped title is struck line by line. */
 .text { display: inline; font-weight: 600; font-size: 1.0625rem; line-height: 1.6; overflow-wrap: anywhere; cursor: text; background: linear-gradient(var(--accent), var(--accent)) no-repeat 0 55% / 0 2px; transition: background-size 240ms var(--ease-out), color .2s; }
 .item.done .text { color: var(--muted); background-size: 100% 2px; }
 .edit { width: 100%; background: var(--surface); border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; padding: 2px 0; font-weight: 600; font-size: 1.0625rem; }
-.meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-top: 2px; color: var(--muted); font-size: .875rem; }
+.meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 var(--s3); color: var(--muted); font-size: .875rem; line-height: 1.7rem; }
 .pill { font-size: .8125rem; font-weight: 800; letter-spacing: .01em; white-space: nowrap; }
 .pill.prio-high { color: var(--accent-text); }
 .pill.prio-med { color: var(--ink); }
@@ -271,7 +285,7 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
 @media (max-width: 820px) {
   :root { --margin: 16px; --gutter: 16px; }
   .bar { align-items: center; gap: var(--s3); padding-top: var(--s3); }
-  .menu-btn { display: grid; }
+  .bar > .menu-btn { display: grid; }
   .brand-sm { display: block; margin-right: auto; font-weight: 900; font-size: 1.25rem; letter-spacing: -.03em; }
   .cmd kbd { display: none; }
   .side { position: fixed; inset: 0 auto 0 0; z-index: 26; width: min(320px, 86vw); display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: var(--s4) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom)); background: var(--bg); color: var(--ink); border-right: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain; visibility: hidden; transform: translateX(-100%); transition: transform 200ms var(--ease-out), visibility 0s 200ms; }
@@ -282,9 +296,11 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
   .toast button { min-height: 44px; }
   .side-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s4); }
   .side-head .icon-btn { display: grid; }
-  .side .views:first-of-type, .side .views:last-of-type { display: flex; flex-direction: column; gap: 0; }
-  .side-title { margin: var(--s5) 0 var(--s1); font-size: .875rem; color: var(--muted); }
-  .views button, .side .views:last-of-type button { width: 100%; min-height: 44px; align-items: center; justify-content: flex-start; border-bottom: 1px solid var(--line); font-size: 1rem; }
+  .side .views { display: flex; flex-direction: column; gap: 0; }
+  .lists-toggle { display: none; }
+  .lists, .lists.show { display: block; }
+  .lists .side-title { display: block; margin: var(--s5) 0 var(--s1); font-size: .875rem; color: var(--muted); }
+  .side .views button { width: 100%; min-height: 44px; align-items: center; justify-content: flex-start; border-bottom: 1px solid var(--line); font-size: 1rem; }
   .views button.on { border-bottom: var(--rule) solid var(--ink); }
   .views .label { flex: 1; max-width: none; }
   .views button.on .mark { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -306,18 +322,28 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
   h1 { grid-column: 3 / 5; align-self: end; font-size: clamp(1.25rem, 6.6vw, 1.75rem); }
   .sub, .composer { grid-column: 1 / -1; }
   .sub { margin-top: var(--s4); font-size: 1.0625rem; }
-  .primary { width: 100%; margin-left: 0; min-height: 48px; }
-  /* Each field needs ~11rem to show "dd-mm-yyyy" and "Medium priority" in full; below that they stack. */
-  .row input, .row select { flex: 1 1 11rem; min-height: 44px; font-size: 1rem; }
+  /* Phones: the task line, then date and priority, then a full-width Add. */
+  .composer { grid-template-columns: minmax(0, 1fr); }
+  .composer .row { border-bottom: 0; flex-wrap: wrap; gap: var(--s3); padding-top: var(--s3); }
+  .row input, .row select { flex: 1 1 11rem; height: 44px; border: 1.5px solid currentColor; border-radius: 2px; font-size: 1rem; }
+  .primary { width: 100%; margin-left: 0; height: 48px; }
 
   .sheet { padding-top: var(--s6); }
+  .sheet-head { grid-template-columns: minmax(0, 1fr); row-gap: var(--s3); }
   .toolbar, .tools, .tabs { width: 100%; }
   .tabs { justify-content: space-between; }
   .tools input { flex: 1; width: auto; }
   .tools input, .tools select { height: 44px; font-size: 1rem; }
   /* The rail becomes a line above each group */
   .item { grid-template-columns: 24px minmax(0, 1fr) auto auto; column-gap: var(--s3); }
-  .when { grid-column: 1 / -1; padding: 0 0 var(--s2); }
+  .item:not(.first) { background-size: 100% 1px; }
+  /* Date and priority appear once the task line is in use, so more of the list shows at rest. */
+  .composer:not(:focus-within):not(.filled) .row > :not(.primary) { display: none; }
+  .when { grid-column: 1 / -1; padding: 0 0 var(--s2); display: flex; align-items: baseline; gap: var(--s3); }
+  .when small { margin: 0; }
+  .body { display: flex; flex-wrap: wrap; gap: 0 var(--s3); }
+  .title { flex-basis: 100%; }
+  .body .meta { flex: 1; }
   .item:not(.first) .when { display: none; }
   .act { width: 44px; height: 44px; margin-top: -10px; opacity: 1; }
   .act + .act { margin-left: calc(-1 * var(--s3)); }
@@ -344,7 +370,7 @@ h1 { margin: 0; font: 800 clamp(2.25rem, 4.2vw, 3.5rem)/1 var(--font); letter-sp
   .icon-btn:hover, .cmd:hover { background: color-mix(in srgb, var(--accent-ink) 14%, transparent); }
   .drawer .icon-btn:hover { background: var(--soft); }
   .primary:hover { background: color-mix(in srgb, var(--accent-ink) 86%, var(--accent)); }
-  .side .views button:hover { border-bottom-color: currentColor; }
+  .side .views button:hover, .lists-toggle:hover { border-bottom-color: currentColor; }
   .new-list button:hover { background: color-mix(in srgb, var(--accent-ink) 14%, transparent); }
   .tabs button:hover { color: var(--ink); }
   .item:hover { background: var(--soft); }

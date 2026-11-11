@@ -27,7 +27,7 @@ The day as a Swiss International Style poster. A red field at the top states how
 
 - **Brand:** red `#D62839` (the field) and yellow `#FFC53D` (a marker only), on white and off-black.
 - **Type:** one family, Hanken Grotesk, from 300 to 900. Every number uses tabular figures.
-- **Layout:** no sidebar and no cards. 3px ink rules open each group, and hairlines separate rows. A "when" rail (Overdue, Today, Tomorrow, a date, Done) labels each run of tasks. On phones the views and lists move into a slide-out menu.
+- **Layout:** no sidebar and no cards. The sheet opens sorted by day: Overdue first, then each day, undated tasks, and finished tasks last. A "when" rail labels each group with its name and task count. 3px ink rules open each group, and hairlines separate rows from the task column on. Title, details and priority sit in aligned columns. "My order" (drag, Alt+arrows, or Move up/down in the drawer) is one choice away in the sort menu. Lists open from a "Lists" button in the top line. On phones the views and lists move into a slide-out menu.
 - **Signature:** the count re-sets with a short roll when it changes, and a finished task gets a red strike, line by line.
 - **Red text** uses a text-safe red (`#C8202F`), so it reaches 4.5:1 even on the hover grey. Red never means danger by colour alone: overdue tasks also get an icon and words.
 
@@ -68,7 +68,7 @@ Needs Node 22.12 or newer (CI uses Node 26 LTS).
 cd react
 npm install
 npm run dev        # development server
-npm test           # unit and DOM tests (145)
+npm test           # unit and DOM tests (147)
 npm run contrast   # WCAG AA check of the colour tokens
 npm run build      # type-check + production build
 npm run csp        # checks the built page's Content Security Policy

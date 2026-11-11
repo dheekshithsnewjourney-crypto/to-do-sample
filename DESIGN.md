@@ -96,7 +96,7 @@ The field stays brand red in both themes.
 
 ## Layout
 
-12 columns on desktop (24px gutter, 40px margins, max 1240px), 4 columns on phones (16px). The count spans 4 columns, the date and quick-add 8. In the sheet, the "when" rail spans 4 columns, so the check circles align with the date above. On phones the rail becomes a line above each group, and the view index becomes an off-canvas menu.
+12 columns on desktop (24px gutter, 40px margins, max 1240px), 4 columns on phones (16px). The count spans 4 columns, the date and quick-add 8. The top line is type only: brand at the left, views and a "Lists" button at the right; lists open as a second line. Quick-add is one line under one rule: the task, then date and priority as quiet cells, then Add. In the sheet, the "when" rail spans 4 columns and carries the view title, then each group label with its task count; the check circles align with the date above. Rows have three aligned columns: title, details, priority. The sheet opens sorted by day. On phones the rail becomes a line above each group, the view index becomes an off-canvas menu, and date and priority appear when the task line is in use.
 
 ## Elevation & Depth
 
@@ -108,7 +108,7 @@ Square: 2px radius on buttons and inputs, 0 on swatches and badges. Circles only
 
 ## Components
 
-- **Rule:** 3px ink rule opens a group; 1px hairline between rows; a red 3px rule marks a drag target.
+- **Rule:** 3px ink rule opens a group; inside a group a 1px hairline starts at the task column and leaves the rail clear; a red 3px rule marks a drag target.
 - **Check:** 22px ink ring; done fills it with ink and draws a 2px red strike across the title, line by line.
 - **Field controls:** transparent with a 1.5px current-colour border; the primary button inverts (white on red).
 - **Tabs:** text with a 2px underline for the active one.
