@@ -1,0 +1,24 @@
+{
+  "name": "Tasks · Grid",
+  "colors": {
+    "accent": { "light": "#D62839", "dark": "#D62839" },
+    "accent-ink": { "light": "#FFFFFF", "dark": "#FFFFFF" },
+    "accent-text": { "light": "#C8202F", "dark": "#FF5A68" },
+    "sun": { "light": "#FFC53D", "dark": "#FFC53D" },
+    "sun-ink": { "light": "#111111", "dark": "#111111" },
+    "ink": { "light": "#111111", "dark": "#F4F4F4" },
+    "muted": { "light": "#636363", "dark": "#A6A6A6" },
+    "bg": { "light": "#FFFFFF", "dark": "#0C0C0C" },
+    "surface": { "light": "#FFFFFF", "dark": "#161616" },
+    "soft": { "light": "#F2F2F2", "dark": "#1F1F1F" },
+    "line": { "light": "#DCDCDC", "dark": "#2C2C2C" },
+    "danger": { "light": "#A4161A", "dark": "#FF6B6B" }
+  },
+  "typography": { "family": "Hanken Grotesk", "scale": { "numeral": "clamp(7.5rem,15vw,13.5rem)/0.8 900", "display": "clamp(2.25rem,4.2vw,3.5rem)/1 800", "headline": "2rem/1.1 800", "title": "1.0625rem/1.6 600", "body": "1rem/1.5 400", "meta": "0.875rem/1.5 600" } },
+  "rules": { "group": "3px solid ink", "row": "1px solid line", "dropTarget": "3px solid accent" },
+  "radius": { "base": "2px" },
+  "shadows": { "palette": "0 24px 64px -16px rgba(0,0,0,.45)" },
+  "motion": { "easeOut": "cubic-bezier(.23,1,.32,1)", "easeDrawer": "cubic-bezier(.32,.72,0,1)", "numeralRoll": "240ms easeOut", "strike": "240ms easeOut (background-size)", "drawerIn": "280ms easeDrawer", "drawerOut": "180ms easeOut", "toastIn": "200ms", "toastOut": "160ms", "palette": "none" },
+  "breakpoints": { "phone": "max-width: 820px" },
+  "grid": { "desktop": "12 cols, 24px gutter, 40px margin, 1240px max", "phone": "4 cols, 16px gutter, 16px margin", "rail": "4 of 12 columns" }
+}

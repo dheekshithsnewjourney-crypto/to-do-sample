@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import Colophon from './components/Colophon';
 import Drawer from './components/Drawer';
 import EmptyState, { type EmptyKind } from './components/EmptyState';
 import Filters from './components/Filters';
 import Palette from './components/Palette';
-import ProgressRing from './components/ProgressRing';
 import Sidebar from './components/Sidebar';
 import TaskForm from './components/TaskForm';
 import TaskItem from './components/TaskItem';
@@ -16,7 +16,7 @@ import { tasksReducer } from './reducer';
 import { loadLists, loadTasks, parseBackup, saveLists, saveTasks } from './storage';
 import type { Filter, List, Sort, Task, View } from './types';
 import { uid } from './uid';
-import { count, dueForNewTask, inView } from './views';
+import { count, dueForNewTask, inView, whenLabel } from './views';
 
 type Theme = 'light' | 'dark';
 interface Undo { id: string; message: string; items: { task: Task; index: number }[] }
@@ -25,6 +25,7 @@ const THEME_KEY = 'todo-theme';
 const ACCENT_KEY = 'todo-accent';
 const RANK = { high: 0, med: 1, low: 2 } as const;
 const LIST_COLORS = ['#D62839', '#FFC53D', '#8A8A8A'];
+const DATE_LONG: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 const VIEW_TITLES: Record<string, string> = { all: 'All tasks', today: 'Today', upcoming: 'Upcoming', overdue: 'Overdue' };
 const MOD_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
@@ -59,6 +60,7 @@ export default function App() {
   const listRef = useRef<HTMLUListElement>(null);
   const focusAfterMove = useRef<string | null>(null);
   const { today, hello } = useClock(); // stays correct when the tab is left open past midnight
+  const lastCount = useRef<number | null>(null); // the poster numeral rolls only when its value changes
 
   useEffect(() => saveTasks(tasks), [tasks]);
   useEffect(() => saveLists(lists), [lists]);
@@ -76,6 +78,8 @@ export default function App() {
     const surfaces = [css.getPropertyValue('--bg'), css.getPropertyValue('--surface')];
     const vars = accent ? accentVars(accent, surfaces, theme === 'dark') : null;
     if (vars) Object.entries(vars).forEach(([name, value]) => root.style.setProperty(name, value));
+    // The browser bar takes the field colour, so the red runs to the top edge on phones.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--accent').trim() || '#D62839');
     try {
       if (accent) localStorage.setItem(ACCENT_KEY, accent);
       else localStorage.removeItem(ACCENT_KEY);
@@ -132,8 +136,10 @@ export default function App() {
   });
   lists.forEach((l) => { viewCounts[`list:${l.id}`] = tasks.filter((t) => !t.done && t.listId === l.id).length; });
 
+  // The list filters on a deferred copy of the query, so the search field paints each keystroke first.
+  const deferredQuery = useDeferredValue(query);
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     let list = scoped.filter((t) => {
       if (filter === 'active' && t.done) return false;
       if (filter === 'done' && !t.done) return false;
@@ -142,7 +148,7 @@ export default function App() {
     if (sort === 'due') list = [...list].sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
     if (sort === 'priority') list = [...list].sort((a, b) => RANK[a.priority] - RANK[b.priority]);
     return list;
-  }, [scoped, filter, sort, query]);
+  }, [scoped, filter, sort, deferredQuery]);
 
   const overdue = viewCounts.overdue;
   const allActive = viewCounts.all;
@@ -202,7 +208,8 @@ export default function App() {
     setStatus('Restored');
   }
 
-  function nudge(id: string, dir: -1 | 1) {
+  // `refocus` is false when the move comes from the drawer: focus must stay inside the dialog.
+  function nudge(id: string, dir: -1 | 1, refocus = true) {
     if (!canDrag) {
       setStatus('Reordering is off while the list is sorted or searched. Switch to "My order" and clear the search to move tasks.');
       return;
@@ -210,7 +217,7 @@ export default function App() {
     const i = visible.findIndex((t) => t.id === id);
     const other = visible[i + dir];
     if (i < 0 || !other) return;
-    focusAfterMove.current = id;
+    if (refocus) focusAfterMove.current = id;
     dispatch({ type: 'move', from: id, to: other.id });
     setStatus(`Moved "${visible[i].text}" to position ${i + dir + 1} of ${visible.length}`);
   }
@@ -266,23 +273,26 @@ export default function App() {
     setStatus(`Imported ${count(parsed.tasks.length, 'task')}`);
   }
 
-  return (
-    <div className="shell">
-      <Sidebar
-        view={view} onView={setView} counts={viewCounts} lists={lists}
-        onAddList={addList} onDeleteList={deleteList} onExport={exportData} onImport={importData}
-        accent={accent} onAccent={setAccent} open={menu} onClose={() => setMenu(false)}
-      />
+  const remaining = viewCounts[view] ?? 0;
+  const rolled = lastCount.current !== null && lastCount.current !== remaining;
+  // Updated after paint, so the next render can tell whether the numeral changed.
+  useEffect(() => { lastCount.current = remaining; });
+  const allDone = tasks.length > 0 && allActive === 0;
+  const dateLong = parseISO(today)?.toLocaleDateString(undefined, DATE_LONG) ?? '';
+  const whens = useMemo(() => visible.map((t) => whenLabel(t, today)), [visible, today]);
 
-      <main className="app">
-        <div className="topbar">
+  return (
+    <div className="poster">
+      <header className="field">
+        <div className="bar">
           <button className="icon-btn menu-btn" type="button" onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu} aria-controls="sidebar">
             <MenuIcon />
           </button>
-          <p className="date">
-            <span className="date-long">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-            <span className="date-short" aria-hidden="true">{parseISO(today)?.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-          </p>
+          <span className="brand-sm" aria-hidden="true">Tasks</span>
+          <Sidebar
+            view={view} onView={setView} counts={viewCounts} lists={lists}
+            onAddList={addList} onDeleteList={deleteList} open={menu} onClose={() => setMenu(false)}
+          />
           {/* No aria-label: the visible word "Commands" must be part of the accessible name (WCAG 2.5.3). */}
           <button className="cmd" type="button" onClick={() => setPalette(true)} aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
             Commands <kbd>{MOD_KEY} K</kbd>
@@ -293,57 +303,71 @@ export default function App() {
           </button>
         </div>
 
-        <header className="hero">
-          <div>
-            <h1>{hello}</h1>
+        <div className="masthead" inert={menu}>
+          <p className={`count${allDone ? ' complete' : ''}`} role="img" data-len={String(remaining).length}
+            aria-label={allDone ? `All ${count(tasks.length, 'task')} done` : `${count(remaining, 'task')} to do in ${viewTitle}`}>
+            <span key={remaining} className={rolled ? 'roll' : undefined}>{remaining}</span>
+          </p>
+          <div className="head">
+            <h1><span className="sr-only">Tasks, </span>{dateLong}</h1>
             <p className="sub">
+              {hello}.{' '}
               {tasks.length === 0 ? 'Add a task to get started.'
-                : allActive === 0 ? 'Everything is done. Nice work.'
-                : <>{allActive} to do{overdue > 0 && <>, <strong>{overdue} overdue</strong></>}</>}
+                : allActive === 0 ? 'Everything is done.'
+                : <>{count(allActive, 'task')} to do{overdue > 0 && <>, <strong>{overdue} overdue</strong></>}.</>}
             </p>
+            <TaskForm onAdd={handleAdd} />
           </div>
-          <ProgressRing done={totalDone} total={tasks.length} />
-        </header>
+        </div>
+      </header>
 
-        <TaskForm onAdd={handleAdd} />
-
+      <main className="sheet" inert={menu}>
         <section className="panel" aria-labelledby="view-title">
           <div className="panel-head">
             <h2 className="view-title" id="view-title">{viewTitle}</h2>
             <span className={`badge${view === 'today' && viewCounts.today > 0 ? ' sun' : ''}`}>
-              {viewCounts[view] ?? 0}<span className="sr-only"> to do</span>
+              {remaining}<span className="sr-only"> to do</span>
             </span>
           </div>
           <Filters filter={filter} counts={counts} onFilter={setFilter} query={query} onQuery={setQuery}
             sort={sort} onSort={setSort} searchRef={searchRef} />
           <ul className="list" ref={listRef}>
-            {visible.map((t) => (
-              <TaskItem
-                key={t.id}
-                task={t}
-                list={currentListId ? undefined : lists.find((l) => l.id === t.listId)}
-                query={query}
-                draggable={canDrag}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-                onEdit={(id, text) => dispatch({ type: 'edit', id, text })}
-                onOpen={setOpenId}
-                onMove={(from, to) => dispatch({ type: 'move', from, to })}
-                onNudge={nudge}
-              />
-            ))}
+            {visible.map((t, i) => {
+              const when = whens[i];
+              const first = i === 0 || whens[i - 1] !== when;
+              return (
+                <TaskItem
+                  key={t.id}
+                  task={t}
+                  when={when}
+                  first={first}
+                  list={currentListId ? undefined : lists.find((l) => l.id === t.listId)}
+                  query={deferredQuery}
+                  draggable={canDrag}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                  onEdit={(id, text) => dispatch({ type: 'edit', id, text })}
+                  onOpen={setOpenId}
+                  onMove={(from, to) => dispatch({ type: 'move', from, to })}
+                  onNudge={nudge}
+                />
+              );
+            })}
           </ul>
           {visible.length === 0 && (
             <EmptyState kind={emptyKind} listName={currentListId ? viewTitle : undefined}
               query={query.trim()} onClearSearch={() => setQuery('')} />
           )}
-          <footer className="foot">
-            <span className="keys"><kbd>N</kbd> new task · <kbd>/</kbd> search · <kbd>Alt</kbd> <kbd>↑↓</kbd> reorder</span>
-            {totalDone > 0 && <button className="link" type="button" onClick={clearCompleted}>Clear completed</button>}
-          </footer>
+          {totalDone > 0 && (
+            <div className="foot">
+              <button className="link" type="button" onClick={clearCompleted}>Clear completed</button>
+            </div>
+          )}
         </section>
         <p className="sr-only" role="status">{status}</p>
       </main>
+
+      <Colophon accent={accent} onAccent={setAccent} onExport={exportData} onImport={importData} modKey={MOD_KEY} inert={menu} />
 
       {openTask && (
         <Drawer
@@ -356,6 +380,7 @@ export default function App() {
           onToggleSub={(subId) => dispatch({ type: 'toggleSub', taskId: openTask.id, subId })}
           onDeleteSub={(subId) => dispatch({ type: 'deleteSub', taskId: openTask.id, subId })}
           onDelete={() => handleDelete(openTask.id)}
+          onMove={(dir) => nudge(openTask.id, dir, false)}
         />
       )}
       {undo && <Toast key={undo.id} message={undo.message} onUndo={handleUndo} onDismiss={() => setUndo(null)} />}

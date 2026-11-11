@@ -1,3 +1,4 @@
+import { nextDue, parseISO } from './dates';
 import type { Task, View } from './types';
 
 // Which tasks a sidebar view shows. Dates are YYYY-MM-DD strings, so plain string comparison is correct.
@@ -26,4 +27,17 @@ export function count(n: number, noun: string): string {
 // A task added while looking at Today is due today, so it appears where it was added.
 export function dueForNewTask(view: View, today: string, explicit?: string): string | undefined {
   return explicit ?? (view === 'today' ? today : undefined);
+}
+
+const WHEN = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); // reused, see dates.ts
+
+// The "when" rail of the sheet: the group a task belongs to, read left of the row.
+export function whenLabel(t: Task, today: string): string {
+  if (t.done) return 'Done';
+  if (!t.dueDate) return 'No date';
+  if (t.dueDate < today) return 'Overdue';
+  if (t.dueDate === today) return 'Today';
+  if (t.dueDate === nextDue(today, 'daily')) return 'Tomorrow';
+  const d = parseISO(t.dueDate);
+  return d ? WHEN.format(d) : 'No date';
 }

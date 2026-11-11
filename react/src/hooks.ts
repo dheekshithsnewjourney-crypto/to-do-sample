@@ -25,6 +25,8 @@ export function useDialog(ref: RefObject<HTMLElement | null>, active: boolean, o
     if (!active || !node) return;
     const opener = document.activeElement as HTMLElement | null;
     stack.push(node);
+    // Locking scroll removes a classic scrollbar: pad by its width so the page does not jump sideways.
+    if (stack.length === 1) document.body.style.paddingRight = `${Math.max(0, window.innerWidth - document.documentElement.clientWidth)}px`;
     document.body.classList.add('locked');
     (focusable(node)[0] ?? node).focus();
 
@@ -51,7 +53,10 @@ export function useDialog(ref: RefObject<HTMLElement | null>, active: boolean, o
     return () => {
       document.removeEventListener('keydown', onKey);
       stack.splice(stack.indexOf(node), 1);
-      if (!stack.length) document.body.classList.remove('locked');
+      if (!stack.length) {
+        document.body.classList.remove('locked');
+        document.body.style.paddingRight = '';
+      }
       // The opener may be gone (its task was just deleted): fall back to a stable element.
       const target = opener?.isConnected && opener !== document.body
         ? opener

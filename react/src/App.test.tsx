@@ -136,6 +136,20 @@ describe('App: keyboard', () => {
     expect(screen.queryByRole('combobox', { name: 'Command' })).toBeNull();
   });
 
+  it('moves a task from the drawer without dragging, and keeps focus in the drawer', () => {
+    seed([{ text: 'One' }, { text: 'Two' }, { text: 'Three' }]);
+    render(<App />);
+    fireEvent.click(screen.getByLabelText('Open details for "One"'));
+    const down = screen.getByRole('button', { name: 'Move down' });
+    down.focus();
+    fireEvent.click(down);
+    expect(titles()).toEqual(['Two', 'One', 'Three']);
+    expect(status()).toBe('Moved "One" to position 2 of 3');
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Move up' }));
+    expect(titles()).toEqual(['One', 'Two', 'Three']);
+  });
+
   it('keeps focus on a task while Alt+Arrow moves it, and announces the move', () => {
     seed([{ text: 'One' }, { text: 'Two' }, { text: 'Three' }]);
     render(<App />);

@@ -11,16 +11,6 @@ const SMART: { id: View; label: string }[] = [
   { id: 'overdue', label: 'Overdue' },
 ];
 
-// `null` is the brand red from the stylesheet (it differs between light and dark).
-const ACCENTS: { name: string; value: string | null; swatch: string }[] = [
-  { name: 'Red (default)', value: null, swatch: '#D62839' },
-  { name: 'Tangerine', value: '#E8590C', swatch: '#E8590C' },
-  { name: 'Green', value: '#2B8A3E', swatch: '#2B8A3E' },
-  { name: 'Blue', value: '#1C7ED6', swatch: '#1C7ED6' },
-  { name: 'Violet', value: '#7048E8', swatch: '#7048E8' },
-  { name: 'Pink', value: '#D6409F', swatch: '#D6409F' },
-];
-
 interface Props {
   view: View;
   onView: (v: View) => void;
@@ -28,17 +18,12 @@ interface Props {
   lists: List[];
   onAddList: (name: string) => void;
   onDeleteList: (id: string) => void;
-  onExport: () => void;
-  onImport: (file: File) => void;
-  accent: string | null;
-  onAccent: (c: string | null) => void;
   open: boolean; // only matters on narrow screens, where the sidebar is an off-canvas drawer
   onClose: () => void;
 }
 
-export default function Sidebar({ view, onView, counts, lists, onAddList, onDeleteList, onExport, onImport, accent, onAccent, open, onClose }: Props) {
+export default function Sidebar({ view, onView, counts, lists, onAddList, onDeleteList, open, onClose }: Props) {
   const [name, setName] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
   const ref = useRef<HTMLElement>(null);
   useDialog(ref, open, onClose); // focus trap, Escape and focus restore while it is a drawer
 
@@ -49,7 +34,8 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
 
   return (
     <>
-      {open && <div className="scrim" onClick={onClose} />}
+      {/* Always rendered, so it can fade out with the panel */}
+      <div className={`scrim${open ? ' open' : ''}`} onClick={onClose} aria-hidden="true" />
       <aside ref={ref} id="sidebar" className={`side${open ? ' open' : ''}`} aria-label="Views and lists"
         role={open ? 'dialog' : undefined} aria-modal={open ? true : undefined}>
         <div className="side-head">
@@ -77,7 +63,7 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
               <div key={l.id} className="list-row">
                 <button type="button" className={view === id ? 'on' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => go(id)}>
                   <span className="mark" aria-hidden="true">{monogram(l.name)}</span>
-                  <span className="label">{l.name}</span>
+                  <span className="label" title={l.name}>{l.name}</span>
                   <span className="n">{counts[id] ?? 0}</span>
                 </button>
                 <button type="button" className="x" aria-label={`Delete list ${l.name}`} onClick={() => onDeleteList(l.id)}><CloseIcon size={16} /></button>
@@ -97,37 +83,6 @@ export default function Sidebar({ view, onView, counts, lists, onAddList, onDele
           <button type="submit" aria-label="Add list"><PlusIcon size={16} /></button>
         </form>
 
-        <p className="side-title" id="accent-title">Accent colour</p>
-        <div className="swatches" role="group" aria-labelledby="accent-title">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.name}
-              type="button"
-              className="swatch"
-              style={{ background: a.swatch }}
-              title={a.name}
-              aria-label={a.name}
-              aria-pressed={accent === a.value}
-              onClick={() => onAccent(a.value)}
-            />
-          ))}
-        </div>
-
-        <div className="data">
-          <button type="button" className="link" onClick={onExport}>Export backup</button>
-          <button type="button" className="link" onClick={() => fileRef.current?.click()}>Import backup</button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onImport(f);
-              e.target.value = '';
-            }}
-          />
-        </div>
       </aside>
     </>
   );

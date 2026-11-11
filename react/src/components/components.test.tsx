@@ -28,7 +28,7 @@ function DrawerHarness({ task = base, onUpdate = noop }: { task?: Task; onUpdate
       <button>behind the overlay</button>
       {open && (
         <Drawer task={task} lists={[]} onClose={() => setOpen(false)} onUpdate={onUpdate}
-          onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} />
+          onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} />
       )}
     </>
   );
@@ -67,8 +67,12 @@ describe('Drawer focus management', () => {
   it('returns focus to the element that opened it', async () => {
     const { opener } = openDrawer();
     fireEvent.click(screen.getByLabelText('Close details'));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(document.activeElement).toBe(opener);
+    // Focus comes back in the dialog's effect cleanup, which React runs after the dialog leaves the DOM:
+    // wait for both, or the check can run between the two steps under load.
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.activeElement).toBe(opener);
+    });
   });
 
   it('saves a title that is still being typed when Escape closes the drawer', async () => {
@@ -119,7 +123,7 @@ describe('Command palette', () => {
     const closePalette = vi.fn();
     render(
       <>
-        <Drawer task={base} lists={[]} onClose={closeDrawer} onUpdate={noop} onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} />
+        <Drawer task={base} lists={[]} onClose={closeDrawer} onUpdate={noop} onAddSub={noop} onToggleSub={noop} onDeleteSub={noop} onDelete={noop} onMove={noop} />
         <Palette items={items} onClose={closePalette} />
       </>,
     );

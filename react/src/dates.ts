@@ -38,11 +38,16 @@ function dayDiff(a: Date, b: Date): number {
 
 export type DueTone = 'overdue' | 'today' | 'later';
 
+// One formatter per format, reused: building a new one per call (toLocaleDateString) cost ~2ms
+// per row on a slow phone, which made typing in search lag with a few hundred tasks.
+const SHORT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+const SHORT_YEAR = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
 export function dueInfo(iso: string, done: boolean, now = new Date()): { label: string; tone: DueTone } {
   const due = parseISO(iso);
   if (!due) return { label: 'No date', tone: 'later' };
   const diff = dayDiff(now, due);
-  const short = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const short = SHORT.format(due);
 
   if (diff === 0) return { label: 'Today', tone: done ? 'later' : 'today' };
   if (diff === 1) return { label: 'Tomorrow', tone: 'later' };
@@ -51,7 +56,7 @@ export function dueInfo(iso: string, done: boolean, now = new Date()): { label: 
   if (diff >= -7) return { label: `${-diff} days overdue`, tone: 'overdue' };
   // After a week a count like "400 days" is hard to read: show the date, with the year once it differs.
   const since = due.getFullYear() === now.getFullYear() ? short
-    : due.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    : SHORT_YEAR.format(due);
   return { label: `Overdue since ${since}`, tone: 'overdue' };
 }
 

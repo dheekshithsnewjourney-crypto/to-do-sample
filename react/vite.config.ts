@@ -11,7 +11,9 @@ function csp(): Plugin {
     apply: 'build',
     transformIndexHtml: {
       order: 'post',
-      handler(html) {
+      handler(raw) {
+        // Normalise line endings first: a CRLF checkout (Windows) must hash the same bytes that ship.
+        const html = raw.replace(/\r\n?/g, '\n');
         const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
           .map(([, body]) => `'sha256-${createHash('sha256').update(body).digest('base64')}'`);
         const policy = [
